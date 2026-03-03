@@ -124,16 +124,55 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
     @Transactional
     public Message<String> update(JournalEntryDto dto) {
         String id = dto.getId();
-        JournalEntry journalEntry = super.getById(id);
+        JournalEntry oldJournalEntry = super.getById(id);
         //判断账期是否结账
-        String period = DateUtils.format(journalEntry.getTradeDate(),DateUtils.FORMAT_DATE_YYYY_MM);
+        String period = DateUtils.format(oldJournalEntry.getTradeDate(),DateUtils.FORMAT_DATE_YYYY_MM);
         Message<String> check = settlementService.check(dto.getBookId(), period);
         if(check.getCode() != 0) {
         	return check;
         }
         
-        BeanUtil.copyProperties(dto, journalEntry);
-        boolean result = super.updateById(journalEntry);
+        // 先冲销原来的金额（反向操作）
+        if(oldJournalEntry.getDirection().equalsIgnoreCase("i")
+        		||oldJournalEntry.getDirection().equalsIgnoreCase("o")) {
+        	// 原来的是收入/期初，现在要退回
+        	journalAccountService.expenditure(oldJournalEntry.getAccId(), oldJournalEntry.getIncome());
+        }else {
+        	// 原来的是支出，现在要加回
+        	journalAccountService.income(oldJournalEntry.getAccId(), oldJournalEntry.getExpenditure());
+        }
+        
+        // 更新日记账数据
+        BeanUtil.copyProperties(dto, oldJournalEntry);
+        
+        // 再应用新的金额（正向操作）
+        JournalAccount journalAccount = journalAccountService.getById(oldJournalEntry.getAccId());
+        
+        if(oldJournalEntry.getDirection().equalsIgnoreCase("i") 
+        		|| oldJournalEntry.getDirection().equalsIgnoreCase("o")) {
+        	//i 收入和 o 期初
+        	oldJournalEntry.setExpenditure(null);
+        	if(oldJournalEntry.getDirection().equalsIgnoreCase("o")&&journalAccount.getOpeningBalance().equals(BigDecimal.ZERO)) {
+        		journalAccount.setOpeningBalance(oldJournalEntry.getIncome());
+        	}
+        	journalAccountService.income(oldJournalEntry.getAccId(), oldJournalEntry.getIncome());
+        	
+        }else if(oldJournalEntry.getDirection().equalsIgnoreCase("e")){
+        	oldJournalEntry.setIncome(null);
+        	//支出
+        	if(journalAccount.getBalance().subtract(oldJournalEntry.getExpenditure()).doubleValue() < 0 ) {
+        		throw new BusinessException(10001,"余额不足！");
+        	}
+        	journalAccountService.expenditure(oldJournalEntry.getAccId(), oldJournalEntry.getExpenditure());
+        }
+        
+        // 设置最新余额
+        if(journalAccount != null) {
+        	JournalAccount journalAccountBalance = journalAccountService.getById(oldJournalEntry.getAccId());
+        	oldJournalEntry.setBalance(journalAccountBalance.getBalance());
+        }
+        
+        boolean result = super.updateById(oldJournalEntry);
         return result ? new Message<>(Message.SUCCESS, "修改成功") : new Message<>(Message.FAIL, "修改失败");
     }
 

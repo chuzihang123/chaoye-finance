@@ -47,6 +47,7 @@
 
         <!-- 项目 DAO 层日志 -->
         <Logger name="com.jinbooks.persistence.mapper" level="TRACE" additivity="false">
+            <AppenderRef ref="ConsoleAppender"/>
             <AppenderRef ref="RollingFileAppender"/>
         </Logger>
 

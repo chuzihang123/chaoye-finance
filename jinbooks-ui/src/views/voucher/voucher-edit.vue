@@ -779,6 +779,7 @@ const closeEditAll = () => {
 
 // 右键
 const rowContextmenu = (row: any, column: any, event: Event) => {
+  closeEditAll()
   if (row.id > 0) {
     leftMenu.value = event?.clientX - 20
     topMenu.value = event?.clientY

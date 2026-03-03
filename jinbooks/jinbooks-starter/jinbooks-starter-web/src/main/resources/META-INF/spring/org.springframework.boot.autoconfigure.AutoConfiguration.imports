@@ -7,4 +7,4 @@ com.jinbooks.autoconfigure.MvcInstAutoConfiguration
 com.jinbooks.autoconfigure.MvcResourceAutoConfiguration
 com.jinbooks.autoconfigure.MvcRestrictHostAutoConfiguration
 com.jinbooks.autoconfigure.RedisAutoConfiguration
-com.jinbooks.autoconfigure.SwaggerAutoConfiguration
+com.jinbooks.autoconfigure.SpringDocConfiguration
