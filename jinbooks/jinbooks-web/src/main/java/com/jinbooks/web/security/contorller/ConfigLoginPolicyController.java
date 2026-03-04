@@ -50,7 +50,7 @@ public class ConfigLoginPolicyController {
 
 	@GetMapping(value={"/get"}, produces = {MediaType.APPLICATION_JSON_VALUE})
 	public Message<ConfigLoginPolicy> get(@CurrentUser UserInfo currentUser){
-		ConfigLoginPolicy configLoginPolicy = configLoginPolicyService.getById(currentUser.getBookId());
+		ConfigLoginPolicy configLoginPolicy = configLoginPolicyService.getById(1L);
 		return new Message<>(configLoginPolicy);
 	}
 

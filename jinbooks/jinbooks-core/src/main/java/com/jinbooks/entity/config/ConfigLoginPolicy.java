@@ -93,6 +93,8 @@ public class ConfigLoginPolicy implements Serializable {
 
 	int terminals;
 
+	String bookId;
+
 	public boolean isTwoFactor(){
 		return this.twoFactor > 0;
 	}
