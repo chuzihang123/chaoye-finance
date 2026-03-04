@@ -84,3 +84,12 @@ export function cashFlowExport(query : any): any {
         responseType: 'blob'
     })
 }
+
+// 总账表
+export function selectGeneralSubject(query : any): any {
+    return request({
+        url: '/statement/general-ledger',
+        method: 'get',
+        params: query
+    })
+}

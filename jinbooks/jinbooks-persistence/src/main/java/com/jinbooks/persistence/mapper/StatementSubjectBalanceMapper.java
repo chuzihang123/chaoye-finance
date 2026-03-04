@@ -33,4 +33,26 @@ public interface StatementSubjectBalanceMapper extends BaseMapperPlus<StatementS
                                                           @Param("allMonths") List<String> allMonths,
                                                           @Param("minPeriod") String minPeriod,
                                                           @Param("maxPeriod") String maxPeriod);
+
+    List<StatementSubjectBalance> getGeneralLedger(@Param("dto") StatementParamsDto dto,
+                                                   @Param("allMonths") List<String> allMonths,
+                                                   @Param("minPeriod") String minPeriod,
+                                                   @Param("maxPeriod") String maxPeriod);
+
+    List<StatementSubjectBalance> getTAccountDetails(@Param("dto") StatementParamsDto dto,
+                                                     @Param("allMonths") List<String> allMonths,
+                                                     @Param("minPeriod") String minPeriod,
+                                                     @Param("maxPeriod") String maxPeriod);
+
+    /**
+     * 获取期初余额
+     * @param dto 查询参数
+     * @param startMonth 开始月份，格式：YYYY-MM
+     * @return 期初余额列表
+     */
+    List<StatementSubjectBalance> getOpeningBalance(@Param("dto") StatementParamsDto dto, @Param("startMonth") String startMonth);
+
+    List<StatementSubjectBalance> getClosingBalance(@Param("dto") StatementParamsDto dto, @Param("endMonth") String endMonth);
+
+    long recoverInitial(@Param("bookId") String bookId,@Param("yearPeriod") String yearPeriod);
 }

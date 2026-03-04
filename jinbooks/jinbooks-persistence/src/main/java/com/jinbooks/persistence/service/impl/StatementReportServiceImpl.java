@@ -430,6 +430,73 @@ public class StatementReportServiceImpl implements StatementReportService {
         return Message.ok(res);
     }
 
+    @Override
+    public Message<Map<String, List<StatementSubjectBalance>>> generalLedger(StatementParamsDto dto) {
+        List<StatementSubjectBalance> res = generalLedgerBasic(dto);
+
+        Map<String, List<StatementSubjectBalance>> grouped = res.stream()
+                .collect(Collectors.groupingBy(StatementSubjectBalance::getSubjectCode));
+
+
+        return new Message<>(grouped);
+    }
+
+    @Override
+    public Message<List<StatementSubjectBalance>> tAccount(StatementParamsDto dto) {
+        dto.parse();
+        String currentTerm = configSysService.selectConfigByKey(dto.getBookId(), ConstsSysConfig.SYS_PAYMENT_TERM_CURRENT);
+        List<String> allMonths = dto.getAllMonths(currentTerm);
+
+        // 获取期初余额
+        List<StatementSubjectBalance> openingBalance = subjectBalanceMapper.getOpeningBalance(dto, allMonths.get(0));
+
+        // 获取科目余额表的期末余额
+        List<StatementSubjectBalance> closingBalance = subjectBalanceMapper.getClosingBalance(dto, allMonths.get(allMonths.size() - 1));
+
+        // 获取会计分录明细记录
+        List<StatementSubjectBalance> tAccountDetails = subjectBalanceMapper.getTAccountDetails(dto, allMonths, allMonths.get(0), allMonths.get(allMonths.size() - 1));
+
+        // 合并所有数据返回给前端
+        List<StatementSubjectBalance> result = new ArrayList<>();
+
+        // 1. 添加期初余额记录（标记类型为期初）
+        for (StatementSubjectBalance opening : openingBalance) {
+            if (opening.getDebit().compareTo(BigDecimal.ZERO) != 0 ||
+                    opening.getCredit().compareTo(BigDecimal.ZERO) != 0) {
+                opening.setRecordType("opening"); // 标记为期初余额
+                opening.setVoucherNumber("期初");
+                opening.setVoucherDate(allMonths.get(0) + "-01"); // 设置为期初日期
+                result.add(opening);
+            }
+        }
+
+        // 2. 添加分录明细记录（标记类型为明细）
+        for (StatementSubjectBalance detail : tAccountDetails) {
+            detail.setRecordType("detail"); // 标记为分录明细
+            result.add(detail);
+        }
+
+        // 3. 添加期末余额记录（标记类型为期末，用于前端平衡检查）
+        for (StatementSubjectBalance closing : closingBalance) {
+            closing.setRecordType("closing"); // 标记为期末余额
+            closing.setVoucherNumber("期末");
+            closing.setVoucherDate(allMonths.get(allMonths.size() - 1) + "-" +
+                    String.format("%02d", Calendar.getInstance().getActualMaximum(Calendar.DAY_OF_MONTH))); // 设置为期末日期
+            closing.setSummary("期末余额");
+            result.add(closing);
+        }
+
+        return Message.ok(result);
+    }
+
+    private List<StatementSubjectBalance> generalLedgerBasic(StatementParamsDto dto) {
+        dto.parse();
+        String currentTerm = configSysService.selectConfigByKey(dto.getBookId(), ConstsSysConfig.SYS_PAYMENT_TERM_CURRENT);
+        List<String> allMonths = dto.getAllMonths(currentTerm);
+        return subjectBalanceMapper.getGeneralLedger(dto, allMonths,allMonths.get(0), allMonths.get(allMonths.size() - 1));
+    }
+
+
     /**
      * @Description: 生成报表数据
      * @Param: [configCashFlowBalances]

@@ -111,7 +111,9 @@ public class StatementParamsDto extends PageQuery {
      * 科目编码过滤
      */
     private List<String> subjectCodes;
+    private String subjectCode;
 
+    private String subjectName;
     public void parse() {
         if (StringUtils.isEmpty(bookId)) {
             throw new IllegalArgumentException("账套参数为空");

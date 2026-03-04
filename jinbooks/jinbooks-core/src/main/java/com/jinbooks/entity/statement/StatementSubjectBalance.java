@@ -1,12 +1,12 @@
 /*
  * Copyright [2025] [JinBooks of copyright http://www.jinbooks.com]
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
- 
+
 
 package com.jinbooks.entity.statement;
 
@@ -174,7 +174,7 @@ public class StatementSubjectBalance extends BaseEntity implements Serializable 
     @Schema(name = "prevbalance", description = "上月余额")
     @TableField(fill = FieldFill.INSERT)
     private BigDecimal prevBalance;
-    
+
 
     /**
      * 上月期末余额（借方）
@@ -189,7 +189,7 @@ public class StatementSubjectBalance extends BaseEntity implements Serializable 
     @Schema(name = "prevClosingBalanceCredit", description = "上月期末余额（贷方）")
     @TableField(fill = FieldFill.INSERT)
     private BigDecimal prevClosingBalanceCredit;
-    
+
     /**
      * 上月本年累计发生额（借方）
      */
@@ -203,7 +203,7 @@ public class StatementSubjectBalance extends BaseEntity implements Serializable 
     @Schema(name = "prevYearToDateCredit", description = "上月本年累计发生额（贷方）")
     @TableField(fill = FieldFill.INSERT)
     private BigDecimal prevYearToDateCredit;
-    
+
     /**
      * 是否辅助核算项:n-否;y-是
      */
@@ -220,4 +220,22 @@ public class StatementSubjectBalance extends BaseEntity implements Serializable 
     @TableField(fill = FieldFill.INSERT)
     @TableLogic(value = "n", delval = "y")
     private String deleted;
+
+    @TableField(exist = false)
+    private String summary;
+
+    @TableField(exist = false)
+    private BigDecimal debit;
+
+    @TableField(exist = false)
+    private BigDecimal credit;
+
+    @TableField(exist = false)
+    private String voucherNumber;
+
+    @TableField(exist = false)
+    private String voucherDate;
+
+    @TableField(exist = false)
+    private String recordType;
 }

@@ -27,6 +27,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 财务报表业务接口
@@ -53,4 +54,9 @@ public interface StatementReportService {
     void subjectBalanceExport(StatementParamsDto dto, HttpServletResponse response) throws IOException;
 
     void voucherSummaryExport(StatementParamsDto dto, HttpServletResponse response) throws IOException;
+
+    Message<Map<String, List<StatementSubjectBalance>>> generalLedger(StatementParamsDto dto);
+
+    Message<List<StatementSubjectBalance>> tAccount(StatementParamsDto dto);
+
 }

@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 各类报表接口
@@ -124,6 +125,36 @@ public class StatementReportController {
         validParams(dto);
         statementReportService.voucherSummaryExport(dto, response);
     }
+
+
+    /**
+     * 账表-总账
+     *
+     * @param dto 查询参数
+     * @return 结果
+     */
+    @GetMapping(value = {"/general-ledger"})
+    public Message<Map<String, List<StatementSubjectBalance>>> generalLedger(@ParameterObject StatementParamsDto dto,
+                                                                             @CurrentUser UserInfo userInfo) {
+        dto.setBookId(userInfo.getBookId());
+        validParams(dto);
+        return statementReportService.generalLedger(dto);
+    }
+
+    /**
+     * 账表-总账
+     *
+     * @param dto 查询参数
+     * @return 结果
+     */
+    @GetMapping(value = {"/t-account"})
+    public Message<List<StatementSubjectBalance>> tAccount(@ParameterObject StatementParamsDto dto,
+                                                           @CurrentUser UserInfo userInfo) {
+        dto.setBookId(userInfo.getBookId());
+        validParams(dto);
+        return statementReportService.tAccount(dto);
+    }
+
 
     private void validParams(StatementParamsDto dto) {
         if (StringUtils.isEmpty(dto.getPeriodType())) {
