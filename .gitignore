@@ -55,3 +55,11 @@ package-lock.json
 /jinbooks/.gradle
 jinbooks/.gradle/*
 
+# Docker 环境变量（包含敏感信息）
+.env
+!.env.example
+
+# 宿主机日志目录（由 Docker 容器映射生成）
+/logs/
+/logs/**
+
