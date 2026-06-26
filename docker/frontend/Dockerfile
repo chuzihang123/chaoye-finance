@@ -18,7 +18,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 安装依赖
-RUN npm ci
+RUN npm install
 
 # 复制前端源码
 COPY . .
@@ -37,10 +37,13 @@ RUN npm run build
 # --------------------------------------------------
 # Stage 2: Nginx 运行阶段
 # --------------------------------------------------
-FROM nginx:alpine
+FROM nginx:1.31
 
 # 设置时区
-RUN apk add --no-cache tzdata
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends tzdata && \
+    rm -rf /var/lib/apt/lists/*
+    
 ENV TZ=Asia/Shanghai
 
 # 从构建阶段复制打包后的静态文件到 Nginx 目录

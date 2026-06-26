@@ -58,6 +58,10 @@
 #### 利润表
 <img src="https://gitee.com/jinbooks/jinbooks/raw/main/images/jinbooks_rpt_lrb.png?raw=true"/>
 
+# Docker 部署
+
+Docker Compose 一键部署教程请参考 [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)
+
 # 技术框架
 
 基于Java EE平台，采用Spring、MySQL、Tomcat等开源技术，具有良好扩展性。 

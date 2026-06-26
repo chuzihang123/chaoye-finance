@@ -22,12 +22,12 @@ docker compose ps
 
 ## 服务架构
 
-| 服务 | 容器名 | 镜像 | 内部端口 | 外部端口 | 说明 |
-|------|--------|------|---------|---------|------|
-| MySQL | jinbooks-mysql | mysql:8.0 | 3306 | 3306 | 数据持久化存储 |
-| Redis | jinbooks-redis | redis:7-alpine | 6379 | 6379 | 缓存服务 |
-| 后端 | jinbooks-backend | 本地构建 | 2154 | 2154 | Spring Boot 服务 |
-| 前端 | jinbooks-frontend | 本地构建 | 80 | 80 | Nginx 静态资源托管 |
+| 服务 | 容器名 | 镜像          | 内部端口  | 外部端口 | 说明 |
+|------|--------|-------------|-------|---------|------|
+| MySQL | jinbooks-mysql | mysql:8.0   | 3306  | 3306 | 数据持久化存储 |
+| Redis | jinbooks-redis | redis:7.4.0 | 6379  | 6379 | 缓存服务 |
+| 后端 | jinbooks-backend | 本地构建        | 2154  | 2154 | Spring Boot 服务 |
+| 前端 | jinbooks-frontend | 本地构建        | 18080 | 80 | Nginx 静态资源托管 |
 
 ## 目录结构
 

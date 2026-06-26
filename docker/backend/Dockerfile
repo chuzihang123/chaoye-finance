@@ -8,16 +8,18 @@
 # --------------------------------------------------
 FROM gradle:8.8-jdk17 AS builder
 
-# 设置工作目录
 WORKDIR /app
 
-# 先复制 Gradle 配置文件，利用 Docker 缓存层
+# 【新增】将宿主机本地下载好的 gradle 发行版复制到镜像中
+COPY gradle/gradle-8.8-bin.zip ./gradle/
+
+# 复制 Gradle 配置文件
 COPY gradle.properties settings.gradle build.gradle ./
 COPY gradle ./gradle
 COPY gradlew ./
 RUN chmod +x gradlew
 
-# 复制所有子模块构建配置（不复制源码，先下载依赖）
+# 复制所有子模块构建配置（利用缓存层）
 COPY jinbooks-commons/jinbooks-common/build.gradle ./jinbooks-commons/jinbooks-common/
 COPY jinbooks-commons/jinbooks-crypto/build.gradle ./jinbooks-commons/jinbooks-crypto/
 COPY jinbooks-commons/jinbooks-authn-core/build.gradle ./jinbooks-commons/jinbooks-authn-core/
@@ -33,13 +35,13 @@ COPY jinbooks-starter/jinbooks-starter-web/build.gradle ./jinbooks-starter/jinbo
 COPY jinbooks-starter/jinbooks-starter-xss/build.gradle ./jinbooks-starter/jinbooks-starter-xss/
 COPY jinbooks-web/build.gradle ./jinbooks-web/
 
-# 预下载依赖（利用缓存层，源码变更不重新下载）
+# 预下载依赖（利用缓存层）
 RUN ./gradlew dependencies --no-daemon || true
 
 # 复制全部源码
 COPY . .
 
-# 构建 jinbooks-web 模块的可执行 jar
+# 构建可执行 jar
 RUN ./gradlew :jinbooks-web:bootJar --no-daemon -x test
 
 # --------------------------------------------------

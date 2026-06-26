@@ -14,6 +14,14 @@
  Date: 25/06/2026 11:47:18
 */
 
+
+-- 如果数据库不存在则创建
+CREATE DATABASE IF NOT EXISTS `jinbooks` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 切换到该数据库
+USE `jinbooks`;
+
+
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
