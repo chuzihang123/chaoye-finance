@@ -43,7 +43,7 @@ import com.jinbooks.entity.BaseEntity;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @NoArgsConstructor
-@TableName("JBX_HISTORY_LOGIN_APPS")
+@TableName("jbx_history_login_apps")
 public class HistoryLoginApps extends BaseEntity implements Serializable {
 	@Serial
 	private static final long serialVersionUID = -1600208317188910376L;

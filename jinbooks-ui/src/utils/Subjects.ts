@@ -2,7 +2,6 @@ import booksSetStore from "@/store/modules/bookStore";
 import {h, VNode} from "vue";
 import {formatAmount} from "@/utils/index";
 import {TableColumnCtx} from "element-plus";
-import Decimal from 'decimal.js'
 
 export interface SummaryMethodProps<T = any> {
     columns: TableColumnCtx<T>[]
@@ -88,22 +87,21 @@ export function handleSummaryMethod(param: SummaryMethodProps, recordsAll?: any,
             return
         }
         if (summaryValueIdx.length > 0 && !summaryValueIdx.includes(index)) {
-            return;
+            return
         }
 
-        const values = (recordsAll || data).filter((item: any) => {
-            return true
-        }).map((item: any) => Number(item[column.property]))
-        if (!values.every((value: any) => Number.isNaN(value))) {
-            sums[index] = formatAmount(values.reduce((total: Decimal, curr: any) => {
-                if (!total) {
-                    return new Decimal(curr || 0)
-                }
-                return total.plus(new Decimal(curr || 0));
-            }, 0), '￥ 0')
-        } else {
-            sums[index] = ''
+        // 性能优化:不再 Number↔Decimal 来回转,直接 for 累加
+        const source = recordsAll || data
+        let hasValid = false
+        let total = 0
+        for (const item of source) {
+            const n = Number(item[column.property])
+            if (Number.isFinite(n)) {
+                hasValid = true
+                total += n
+            }
         }
+        sums[index] = hasValid ? formatAmount(Number(total.toFixed(2)), '￥ 0') : ''
     })
 
     return sums

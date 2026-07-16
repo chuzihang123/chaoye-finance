@@ -41,7 +41,7 @@ import com.jinbooks.web.WebContext;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @NoArgsConstructor
-@TableName("JBX_PERMISSION")
+@TableName("jbx_permission")
 public class Permission  extends BaseEntity implements Serializable {
     @Serial
     private static final long serialVersionUID = -8783585691243853899L;

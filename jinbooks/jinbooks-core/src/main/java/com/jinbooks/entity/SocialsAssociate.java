@@ -40,7 +40,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @NoArgsConstructor
-@TableName("JBX_SOCIALS_ASSOCIATE")
+@TableName("jbx_socials_associate")
 public class SocialsAssociate extends BaseEntity implements Serializable {
 	@Serial
 	private static final long serialVersionUID = -207734216183303782L;

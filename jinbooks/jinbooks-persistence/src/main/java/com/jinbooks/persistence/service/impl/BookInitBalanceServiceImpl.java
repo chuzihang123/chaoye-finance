@@ -1,12 +1,12 @@
 /*
  * Copyright [2025] [JinBooks of copyright http://www.jinbooks.com]
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
- 
+
 
 package com.jinbooks.persistence.service.impl;
 
@@ -146,8 +146,27 @@ public class BookInitBalanceServiceImpl extends ServiceImpl<BookInitBalanceMappe
     @Override
     @Transactional
     public Message<String> save(List<BookInitBalanceChangeDto> dtos) {
-        String currentTerm = configSysService.getCurrentTerm(dtos.get(0).getBookId());
-        String initializeTask = configSysService.selectConfigByKey(dtos.get(0).getBookId(), ConstsSysConfig.SYS_INITIALIZE_TASK);
+        // 1. 空列表 + bookId 兜底
+        if (dtos == null || dtos.isEmpty()) {
+            return Message.failed("保存数据不能为空");
+        }
+        String bookId = dtos.get(0).getBookId();
+        if (bookId == null) {
+            return Message.failed("账套ID不能为空");
+        }
+
+        // 2. dtos 按 code 去重(防前端 bug / 网络重传导致重复)
+        dtos = new ArrayList<>(dtos.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(
+                        BookInitBalanceChangeDto::getCode,
+                        dto -> dto,
+                        (a, b) -> b,
+                        LinkedHashMap::new
+                )).values());
+
+        String currentTerm = configSysService.getCurrentTerm(bookId);
+        String initializeTask = configSysService.selectConfigByKey(bookId, ConstsSysConfig.SYS_INITIALIZE_TASK);
         if ("true".equals(initializeTask)) {
             return Message.failed("当前不允许操作，初始化已完成");
         }
@@ -192,6 +211,25 @@ public class BookInitBalanceServiceImpl extends ServiceImpl<BookInitBalanceMappe
             bookInitBalances.add(bookInitBalance);
             originIdMap.put(dto.getCode(), dto.getOriginId());
         });
+        // 3. 复用数据库已存在的 BookInitBalance 的 id
+        //    dtos 没传 id 时,从 DB 查已存在记录复用 id,让 insertOrUpdateBatch 走 UPDATE 路径
+        //    (避免 dtos 始终不带 id 时每次都生成新雪花 id 产生重复行)
+        List<String> codes = bookInitBalances.stream().map(BookInitBalance::getCode).toList();
+        LambdaQueryWrapper<BookInitBalance> initLqw = Wrappers.lambdaQuery();
+        initLqw.eq(BookInitBalance::getBookId, bookId);
+        initLqw.in(BookInitBalance::getCode, codes);
+        List<BookInitBalance> existingInits = bookInitBalanceMapper.selectList(initLqw);
+        Map<String, BookInitBalance> existingInitMap = existingInits.stream()
+                .collect(Collectors.toMap(BookInitBalance::getCode, b -> b));
+        for (BookInitBalance bib : bookInitBalances) {
+            if (bib.getId() == null) {
+                BookInitBalance exist = existingInitMap.get(bib.getCode());
+                if (exist != null) {
+                    bib.setId(exist.getId());
+                }
+            }
+        }
+
         // 如果ID不存在，则生成新的ID，同步更新父级ID
         for (BookInitBalance bookInitBalance : bookInitBalances) {
             if (bookInitBalance.getId() == null) {
@@ -205,7 +243,6 @@ public class BookInitBalanceServiceImpl extends ServiceImpl<BookInitBalanceMappe
         }
         // 更新科目余额
         Map<String, BookSubject> map = new HashMap<>();
-        List<String> codes = bookInitBalances.stream().map(BookInitBalance::getCode).toList();
 
         // 更新科目余额表
         LambdaQueryWrapper<StatementSubjectBalance> balanceLqw = Wrappers.lambdaQuery();
@@ -267,21 +304,39 @@ public class BookInitBalanceServiceImpl extends ServiceImpl<BookInitBalanceMappe
                 balance.setClosingBalanceCredit(balance.getOpeningBalanceCredit()
                         .subtract(balance.getOpeningBalanceDebit()));
             }
-            
-            //上月期末余额
+
+            // 上月期末余额 = 当前期初余额
             balance.setPrevBalance(balance.getBalance());
-            //上月期末借贷余额
-            balance.setPrevClosingBalanceDebit(balance.getPrevClosingBalanceDebit());
-            balance.setPrevClosingBalanceCredit(balance.getPrevClosingBalanceCredit());
-            //上月期末年度累计
+            // 上月期末借贷余额 = 当前期初借贷(刚算出来的)
+            balance.setPrevClosingBalanceDebit(balance.getOpeningBalanceDebit());
+            balance.setPrevClosingBalanceCredit(balance.getOpeningBalanceCredit());
+            // 上月本年累计 = 用户输入的本年累计
             balance.setPrevYearToDateDebit(balance.getYearToDateDebit());
             balance.setPrevYearToDateCredit(balance.getYearToDateCredit());
-            
+
             updateBalances.add(balance);
         }
-        statementSubjectBalanceMapper.insertOrUpdateBatch(updateBalances);
+        // 4. updateBalances 按 code 去重(防同一 code 在 for 循环里被意外加入多次)
+        Map<String, StatementSubjectBalance> dedupBalanceMap = updateBalances.stream()
+                .collect(Collectors.toMap(
+                        StatementSubjectBalance::getSubjectCode,
+                        b -> b,
+                        (a, b) -> b,
+                        LinkedHashMap::new
+                ));
+        List<StatementSubjectBalance> finalBalances = new ArrayList<>(dedupBalanceMap.values());
+        statementSubjectBalanceMapper.insertOrUpdateBatch(finalBalances);
 
-        boolean save = bookInitBalanceMapper.insertOrUpdateBatch(bookInitBalances);
+        // 5. bookInitBalances 按 code 去重(保险起见)
+        Map<String, BookInitBalance> dedupInitMap = bookInitBalances.stream()
+                .collect(Collectors.toMap(
+                        BookInitBalance::getCode,
+                        b -> b,
+                        (a, b) -> b,
+                        LinkedHashMap::new
+                ));
+        List<BookInitBalance> finalInits = new ArrayList<>(dedupInitMap.values());
+        boolean save = bookInitBalanceMapper.insertOrUpdateBatch(finalInits);
         return save ? new Message<>(Message.SUCCESS, "保存成功") : new Message<>(Message.FAIL, "保存失败");
     }
 }

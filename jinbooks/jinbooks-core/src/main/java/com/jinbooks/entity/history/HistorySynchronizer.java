@@ -42,7 +42,7 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @NoArgsConstructor
-@TableName("JBX_HISTORY_SYNCHRONIZER")
+@TableName("jbx_history_synchronizer")
 public class HistorySynchronizer  extends BaseEntity  implements Serializable{
     @Serial
 	private static final long serialVersionUID = -1184644499009162756L;

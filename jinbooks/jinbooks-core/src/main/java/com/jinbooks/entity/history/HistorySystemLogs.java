@@ -43,7 +43,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-@TableName("JBX_HISTORY_SYSTEM_LOGS")
+@TableName("jbx_history_system_logs")
 public class HistorySystemLogs implements Serializable {
 
     @Serial

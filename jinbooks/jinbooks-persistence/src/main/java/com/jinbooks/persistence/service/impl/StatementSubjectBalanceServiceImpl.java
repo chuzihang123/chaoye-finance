@@ -458,9 +458,9 @@ public class StatementSubjectBalanceServiceImpl implements StatementSubjectBalan
             }
             //上月期末余额
             statementSubjectBalance.setPrevBalance(statementSubjectBalance.getBalance());
-            //上月期末借贷余额
-            statementSubjectBalance.setPrevClosingBalanceDebit(statementSubjectBalance.getPrevClosingBalanceDebit());
-            statementSubjectBalance.setPrevClosingBalanceCredit(statementSubjectBalance.getPrevClosingBalanceCredit());
+            // 上一期的期末 = 下一期的"上月期末"
+            statementSubjectBalance.setPrevClosingBalanceDebit(statementSubjectBalance.getClosingBalanceDebit());
+            statementSubjectBalance.setPrevClosingBalanceCredit(statementSubjectBalance.getClosingBalanceCredit());
             //上月期末年度累计
             statementSubjectBalance.setPrevYearToDateDebit(statementSubjectBalance.getYearToDateDebit());
             statementSubjectBalance.setPrevYearToDateCredit(statementSubjectBalance.getYearToDateCredit());
