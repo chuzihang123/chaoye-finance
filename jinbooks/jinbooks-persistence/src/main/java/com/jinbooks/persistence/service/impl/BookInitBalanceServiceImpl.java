@@ -242,7 +242,16 @@ public class BookInitBalanceServiceImpl extends ServiceImpl<BookInitBalanceMappe
             }
         }
         // 更新科目余额
-        Map<String, BookSubject> map = new HashMap<>();
+        List<BookSubject> bookSubjects = bookSubjectMapper.selectList(
+                Wrappers.<BookSubject>lambdaQuery()
+                        .eq(BookSubject::getBookId, bookId)
+                        .in(BookSubject::getCode, codes));
+        Map<String, BookSubject> map = bookSubjects.stream()
+                .collect(Collectors.toMap(
+                        BookSubject::getCode,
+                        b -> b,
+                        (a, b) -> b,
+                        LinkedHashMap::new));
 
         // 更新科目余额表
         LambdaQueryWrapper<StatementSubjectBalance> balanceLqw = Wrappers.lambdaQuery();
