@@ -37,7 +37,9 @@ import com.jinbooks.entity.voucher.dto.GenerateVoucherDto;
 import com.jinbooks.entity.voucher.dto.VoucherChangeDto;
 import com.jinbooks.entity.voucher.dto.VoucherItemChangeDto;
 import com.jinbooks.entity.voucher.dto.VoucherTemplatePageDto;
+import com.jinbooks.enums.BookBusinessExceptionEnum;
 import com.jinbooks.enums.VoucherStatusEnum;
+import com.jinbooks.exception.BusinessException;
 import com.jinbooks.persistence.mapper.BookMapper;
 import com.jinbooks.persistence.mapper.EmployeeSalarySummaryMapper;
 import com.jinbooks.persistence.mapper.SettlementCarryforwardMapper;
@@ -155,11 +157,16 @@ public class SettlementCarryServiceImpl extends ServiceImpl<SettlementMapper, Se
             if (voucherTemplate.getCode().equals("qm_jz_sr")) {//结转收入
                 //贷
                 //主营业务收入
-                addVoucherItems(bookId, "6001", voucherItems, itemsMap.get("6001"));
+                int c1 = addVoucherItems(bookId, "6001", voucherItems, itemsMap.get("6001"));
                 //其他业务收入
-                addVoucherItems(bookId, "6301", voucherItems, itemsMap.get("6301"));
+                int c2 = addVoucherItems(bookId, "6301", voucherItems, itemsMap.get("6301"));
                 //营业外收入
-                addVoucherItems(bookId, "6051", voucherItems, itemsMap.get("6051"));
+                int c3 = addVoucherItems(bookId, "6051", voucherItems, itemsMap.get("6051"));
+                if (c1 + c2 + c3 == 0) {
+                    throw new BusinessException(
+                            BookBusinessExceptionEnum.NO_BALANCE_FOR_CARRY.getCode(),
+                            "结转收入失败：当期[6001/6301/6051]科目无余额数据");
+                }
                 for (VoucherItemChangeDto vt : voucherItems) {
                     debitAmount = debitAmount.add(vt.getDebitAmount());
                 }
@@ -169,17 +176,22 @@ public class SettlementCarryServiceImpl extends ServiceImpl<SettlementMapper, Se
                 voucherItems.add(createVoucherItemDto(bookId, itemsMap.get("4103"), debitAmount));
             } else if (voucherTemplate.getCode().equals("qm_jz_cbfy")) {//结转成本
                 //主营业务成本
-                addVoucherItems(bookId, "6401", voucherItems, itemsMap.get("6401"));
+                int c1 = addVoucherItems(bookId, "6401", voucherItems, itemsMap.get("6401"));
                 //营业税金及附加
-                addVoucherItems(bookId, "6405", voucherItems, itemsMap.get("6405"));
+                int c2 = addVoucherItems(bookId, "6405", voucherItems, itemsMap.get("6405"));
                 //销售费用
-                addVoucherItems(bookId, "6601", voucherItems, itemsMap.get("6601"));
+                int c3 = addVoucherItems(bookId, "6601", voucherItems, itemsMap.get("6601"));
                 //管理费用
-                addVoucherItems(bookId, "6602", voucherItems, itemsMap.get("6602"));
+                int c4 = addVoucherItems(bookId, "6602", voucherItems, itemsMap.get("6602"));
                 //财务费用
-                addVoucherItems(bookId, "6603", voucherItems, itemsMap.get("6603"));
+                int c5 = addVoucherItems(bookId, "6603", voucherItems, itemsMap.get("6603"));
                 //营业外支出
-                addVoucherItems(bookId, "6711", voucherItems, itemsMap.get("6711"));
+                int c6 = addVoucherItems(bookId, "6711", voucherItems, itemsMap.get("6711"));
+                if (c1 + c2 + c3 + c4 + c5 + c6 == 0) {
+                    throw new BusinessException(
+                            BookBusinessExceptionEnum.NO_BALANCE_FOR_CARRY.getCode(),
+                            "结转成本费用失败：当期[6401/6405/6601/6602/6603/6711]科目无余额数据");
+                }
                 for (VoucherItemChangeDto vt : voucherItems) {
                     creditAmount = creditAmount.add(vt.getCreditAmount());
                 }
@@ -188,7 +200,12 @@ public class SettlementCarryServiceImpl extends ServiceImpl<SettlementMapper, Se
                 voucherItems.add(createVoucherItemDto(bookId, itemsMap.get("4103"), debitAmount));
             } else if (voucherTemplate.getCode().equals("qm_jz_sds")) {//结转所得税
                 //所得税
-                addVoucherItems(bookId, "6801", voucherItems, itemsMap.get("6801"));
+                int c1 = addVoucherItems(bookId, "6801", voucherItems, itemsMap.get("6801"));
+                if (c1 == 0) {
+                    throw new BusinessException(
+                            BookBusinessExceptionEnum.NO_BALANCE_FOR_CARRY.getCode(),
+                            "结转所得税失败：当期[6801]科目无余额数据");
+                }
                 for (VoucherItemChangeDto vt : voucherItems) {
                     creditAmount = creditAmount.add(vt.getCreditAmount());
                 }
@@ -198,6 +215,12 @@ public class SettlementCarryServiceImpl extends ServiceImpl<SettlementMapper, Se
             } else if (voucherTemplate.getCode().equals("qm_jz_bnlr")) {//年末 结转本年利润
                 if (month == 12) {
                     StatementSubjectBalance subjectBalance = statementSubjectBalanceService.getSubjectBalance(bookId, "4103");
+                    if (subjectBalance == null || subjectBalance.getBalance() == null
+                            || subjectBalance.getBalance().compareTo(BigDecimal.ZERO) == 0) {
+                        throw new BusinessException(
+                                BookBusinessExceptionEnum.NO_BALANCE_FOR_CARRY.getCode(),
+                                "结转本年利润失败：当期[4103]本年利润无余额数据");
+                    }
                     voucherItems.add(createVoucherItemDto(bookId, itemsMap.get("4103"), subjectBalance.getBalance()));
                     //未分配利润
                     subjectBalance = statementSubjectBalanceService.getSubjectBalance(bookId, "410406");
@@ -306,14 +329,16 @@ public class SettlementCarryServiceImpl extends ServiceImpl<SettlementMapper, Se
         return Message.ok(voucherChangeDto.getId());
     }
 
-    private boolean addVoucherItems(String bookId, String subjectCode, List<VoucherItemChangeDto> items, VoucherTemplateItem templateItem) {
+    private int addVoucherItems(String bookId, String subjectCode, List<VoucherItemChangeDto> items, VoucherTemplateItem templateItem) {
         List<BookSubject> subjectList = bookSubjectService.selectSubjectAndChild(bookId, subjectCode);
+        int count = 0;
         for (BookSubject s : subjectList) {
             if (isLeafSubject(s, subjectList) && s.getBalance().compareTo(BigDecimal.ZERO) != 0) {
                 items.add(createVoucherItemDtoBySubject(bookId, s, templateItem, s.getBalance().abs()));
+                count++;
             }
         }
-        return true;
+        return count;
     }
 
     private boolean isLeafSubject(BookSubject subject, List<BookSubject> subjectList) {

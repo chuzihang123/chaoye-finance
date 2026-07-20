@@ -80,4 +80,10 @@ public interface VoucherService extends IService<Voucher> {
     boolean deleteByBookIds(List<String> bookIds);
 
     Message<String> submitBatch(List<String> ids, String bookId);
+
+    /**
+     * 从已审核凭证重算当期科目余额（不写回 voucher，不影响 status）
+     * 用于结账时补救：手工改 status 跳过 audit 导致余额缺失的场景
+     */
+    void recalculateBalanceFromVouchers(String bookId, String currentTerm);
 }

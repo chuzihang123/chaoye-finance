@@ -26,12 +26,14 @@ import com.jinbooks.entity.Message;
 import com.jinbooks.entity.book.Settlement;
 import com.jinbooks.entity.book.dto.SettlementPageDto;
 import com.jinbooks.entity.book.vo.SettlementVerifyVo;
+import com.jinbooks.entity.statement.StatementSubjectBalance;
 import com.jinbooks.entity.statement.dto.StatementParamsDto;
 import com.jinbooks.entity.voucher.dto.VoucherSuccessiveDto;
 import com.jinbooks.entity.voucher.vo.VoucherItemVo;
 import com.jinbooks.enums.StatementPeriodTypeEnum;
 import com.jinbooks.persistence.mapper.BookMapper;
 import com.jinbooks.persistence.mapper.SettlementMapper;
+import com.jinbooks.persistence.mapper.StatementSubjectBalanceMapper;
 import com.jinbooks.persistence.mapper.VoucherItemMapper;
 import com.jinbooks.persistence.service.*;
 import lombok.extern.slf4j.Slf4j;
@@ -83,6 +85,9 @@ public class SettlementServiceImpl extends ServiceImpl<SettlementMapper, Settlem
     
     @Autowired
     StatementSubjectBalanceService statementSubjectBalanceService;
+
+    @Autowired
+    StatementSubjectBalanceMapper statementSubjectBalanceMapper;
     
     @Autowired
     JournalAccountService journalAccountService;
@@ -143,7 +148,7 @@ public class SettlementServiceImpl extends ServiceImpl<SettlementMapper, Settlem
 
 
 	/**
-	 * 财务软件中关闭当期账务，生成财务报表（资产负债表  利润表）
+	 * 财务软件中关闭当期账务，生成财务报表（资产负债表利润表）
 	 */
 	@Override
 	@Transactional
@@ -157,6 +162,10 @@ public class SettlementServiceImpl extends ServiceImpl<SettlementMapper, Settlem
 		wrapper.eq(Settlement::getYearPeriod, currentTerm);
         Settlement storedSettlement = settlementMapper.selectOne(wrapper);
         if(storedSettlement == null) {
+			// 结账前兜底：若当期 StatementSubjectBalance 缺失（例如手工改 voucher.status 跳过 audit 流程），
+			// 从已审核凭证重算一遍，update 内部对已存在记录天然幂等
+			recalculateBalanceIfMissing(dto.getBookId(), currentTerm);
+
 			Settlement settlement = new Settlement();
 	    	settlement.setBookId(dto.getBookId());
 	    	settlement.setYear(currentTermYearMonth.getYear());
@@ -185,20 +194,43 @@ public class SettlementServiceImpl extends ServiceImpl<SettlementMapper, Settlem
 			//更新当前账期
 			configSysService.termToNext(dto.getBookId());
         }else {
-        	//测试用
+        	// 修复：原来三个 checkout 全注释，重复结账时业务逻辑全跳过、且仍返回"成功"
+        	// 现在重复结账时重跑三个 checkout 让报表可重算，但不重复插 settlement、不重复推进账期
         	Settlement settlement = new Settlement();
 	    	settlement.setBookId(dto.getBookId());
 	    	settlement.setYear(currentTermYearMonth.getYear());
 	    	settlement.setYearPeriod(currentTerm);
-	    	//当前期
 	    	settlement.setCurrentTerm(currentTerm);
-	    	//下一期
 	    	settlement.setNextTerm(currentTermYearMonth.plusMonths(1).toString());
 	    	settlement.setStatus(6);
-	    	//statementSubjectBalanceService.checkout(settlement);
-	    	//statementIncomeService.checkout(settlement);
+	    	StatementParamsDto statementParamsDto = new StatementParamsDto();
+			statementParamsDto.setReportDate(currentTerm);
+			statementParamsDto.setPeriodType("month");
+			statementParamsDto.setBookId(dto.getBookId());
+			settlement.setEndingBalance(statementReportService.getEndingBalance(statementParamsDto));
+			statementBalanceSheetService.checkout(settlement);
+			statementIncomeService.checkout(settlement);
+			statementSubjectBalanceService.checkout(settlement);
         }
 		return new Message<>(Message.SUCCESS, "结账完成");
+	}
+
+
+	/**
+	 * 结账前兜底：当期 StatementSubjectBalance 缺失时，从已审核凭证重算。
+	 * 主要应对手工改 voucher.status 绕过 audit 流程导致余额未生成的场景。
+	 * 已有数据时为 no-op（update 内部对 is_voucher='y' 记录天然跳过，不重复累加）。
+	 */
+	private void recalculateBalanceIfMissing(String bookId, String currentTerm) {
+		LambdaQueryWrapper<StatementSubjectBalance> balanceLqw = new LambdaQueryWrapper<>();
+		balanceLqw.eq(StatementSubjectBalance::getBookId, bookId);
+		balanceLqw.eq(StatementSubjectBalance::getYearPeriod, currentTerm);
+		Long balanceCount = statementSubjectBalanceMapper.selectCount(balanceLqw);
+		if (balanceCount != null && balanceCount > 0) {
+			return;
+		}
+		logger.warn("结账兜底重算：账套 {} 期间 {} 当期科目余额缺失，从已审核凭证重算", bookId, currentTerm);
+		voucherService.recalculateBalanceFromVouchers(bookId, currentTerm);
 	}
 
 

@@ -617,6 +617,44 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     }
 
     /**
+     * 从已审核凭证重算当期科目余额。
+     * 用于结账时补救：手工改 status 跳过 audit / 初始化时余额缺失等场景。
+     * 不写回 voucher.status、不修改 voucher_item，只更新 StatementSubjectBalance。
+     */
+    @Override
+    @Transactional
+    public void recalculateBalanceFromVouchers(String bookId, String currentTerm) {
+        LambdaQueryWrapper<Voucher> lqw = Wrappers.lambdaQuery();
+        lqw.eq(Voucher::getBookId, bookId);
+        lqw.eq(Voucher::getStatus, VoucherStatusEnum.COMPLETED.getValue());
+        lqw.likeRight(Voucher::getVoucherDate, currentTerm);
+        lqw.eq(Voucher::getCarryForward, "n");
+        List<Voucher> vouchers = baseMapper.selectList(lqw);
+        if (vouchers.isEmpty()) {
+            return;
+        }
+
+        for (Voucher v : vouchers) {
+            VoucherVo voucherVo = queryById(v.getId()).getData();
+            if (voucherVo == null) {
+                continue;
+            }
+            VoucherChangeDto dto = new VoucherChangeDto();
+            BeanUtils.copyProperties(voucherVo, dto);
+            List<VoucherItemChangeDto> items = new ArrayList<>();
+            for (VoucherItemVo itemVo : voucherVo.getItems()) {
+                VoucherItemChangeDto itemChangeDto = new VoucherItemChangeDto();
+                BeanUtils.copyProperties(itemVo, itemChangeDto);
+                items.add(itemChangeDto);
+            }
+            dto.setItems(items);
+            BooksVoucherItemProvider provider = updateItemsAndCount(v, dto, v.getId(), true);
+            // 复用 audit 路径的余额累加；update 内部对已存在的科目（is_voucher='y'）天然 continue 跳过，避免重复累加
+            updateSubjectBalance(provider.getItems(), provider.getAuxiliary(), false);
+        }
+    }
+
+    /**
      * 过账记录
      */
     @Transactional

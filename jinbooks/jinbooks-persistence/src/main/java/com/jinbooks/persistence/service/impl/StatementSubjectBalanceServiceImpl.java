@@ -33,10 +33,12 @@ import com.jinbooks.entity.book.Settlement;
 import com.jinbooks.entity.statement.StatementSubjectBalance;
 import com.jinbooks.entity.voucher.VoucherAuxiliary;
 import com.jinbooks.entity.voucher.VoucherItem;
+import com.jinbooks.enums.BookBusinessExceptionEnum;
 import com.jinbooks.enums.StatementPeriodTypeEnum;
 import com.jinbooks.enums.StatementSymbolEnum;
 import com.jinbooks.enums.SubjectDirectionEnum;
 import com.jinbooks.enums.YesNoEnum;
+import com.jinbooks.exception.BusinessException;
 import com.jinbooks.persistence.mapper.AssistAccMapper;
 import com.jinbooks.persistence.mapper.BookSubjectMapper;
 import com.jinbooks.persistence.mapper.StatementSubjectBalanceMapper;
@@ -438,8 +440,11 @@ public class StatementSubjectBalanceServiceImpl implements StatementSubjectBalan
         queryWrapper.eq(StatementSubjectBalance::getPeriodType, StatementPeriodTypeEnum.MONTH.getValue());
         List<StatementSubjectBalance> subjectBalanceList = subjectBalanceMapper.selectList(queryWrapper);
         if (subjectBalanceList.isEmpty()) {
+            // 修复：原来 return false 静默失败，调用方不感知，导致结账后下期余额缺失却报"成功"
             log.warn("账套：{}，期间：{}，科目余额为空，请先创建科目余额", dto.getBookId(), dto.getCurrentTerm());
-            return false;
+            throw new BusinessException(
+                    BookBusinessExceptionEnum.STATEMENT_BALANCE_EMPTY.getCode(),
+                    "当期[" + dto.getCurrentTerm() + "]" + BookBusinessExceptionEnum.STATEMENT_BALANCE_EMPTY.getMsg());
         }
 
         for (StatementSubjectBalance statementSubjectBalance : subjectBalanceList) {

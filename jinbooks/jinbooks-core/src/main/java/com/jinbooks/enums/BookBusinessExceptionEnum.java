@@ -50,7 +50,11 @@ public enum BookBusinessExceptionEnum {
 
     DISABLE_BEFORE_DELETE(500011, "请先禁用当前数据再进行删除操作"),
 
-    DELETE_HAS_VOUCHER(500012, "当前科目已被使用，不可删除");
+    DELETE_HAS_VOUCHER(500012, "当前科目已被使用，不可删除"),
+
+    STATEMENT_BALANCE_EMPTY(500013, "科目余额为空，请先完成凭证审核或初始化科目余额后再结账"),
+
+    NO_BALANCE_FOR_CARRY(500014, "无可结转数据：当期相关科目无余额，无法生成结转凭证");
 
     final String msg;
 
