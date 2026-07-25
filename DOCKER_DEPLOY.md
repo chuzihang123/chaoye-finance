@@ -27,7 +27,7 @@ docker compose ps
 | MySQL | jinbooks-mysql | mysql:8.0   | 3306  | 3306 | 数据持久化存储 |
 | Redis | jinbooks-redis | redis:7.4.0 | 6379  | 6379 | 缓存服务 |
 | 后端 | jinbooks-backend | 本地构建        | 2154  | 2154 | Spring Boot 服务 |
-| 前端 | jinbooks-frontend | 本地构建        | 18080 | 80 | Nginx 静态资源托管 |
+| 前端 | jinbooks-frontend | 本地构建        | 80    | 18080 | Nginx 静态资源托管 |
 
 ## 目录结构
 
@@ -158,7 +158,7 @@ MYSQL_PORT=3307
 
 ## 技术细节
 
-- **后端构建**：使用 Gradle 8.8 + JDK 17 多阶段构建，最终镜像基于 Eclipse Temurin JRE 17
+- **后端构建**：使用 Gradle 8.14.5 + JDK 21 多阶段构建，最终镜像基于 Eclipse Temurin JRE 21
 - **前端构建**：使用 Node 20 多阶段构建，最终镜像基于 Nginx Alpine
 - **Nginx 代理**：前端 `/jinbooks-api/` 请求通过 Nginx 反向代理到后端服务
 - **健康检查**：MySQL、Redis 和后端均配置了健康检查，确保服务按正确顺序启动

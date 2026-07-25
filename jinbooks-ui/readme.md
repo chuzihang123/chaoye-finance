@@ -50,9 +50,7 @@ npm run build
 |-----------------|------------|
 | `npm run dev`   | 启动开发服务器    |
 | `npm run build` | 构建生产版本     |
-| `npm run lint`  | 代码格式检查     |
-| `npm run test`  | 运行单元测试     |
-| `npm run serve` | 本地预览构建后的文件 |
+| `npm run preview` | 本地预览构建后的文件 |
 
 ## 目录结构说明
 
@@ -63,16 +61,16 @@ jinbooks-ui/
 │   ├── assets/           # 资源文件
 │   ├── components/       # 公共组件
 │   ├── views/            # 页面组件
-│   ├── store/            # Vuex 状态管理
+│   ├── store/            # Pinia 状态管理
 │   ├── router/           # 路由配置
 │   ├── utils/            # 工具函数
 │   ├── styles/           # 样式文件
 │   ├── App.vue           # 根组件
-│   └── main.js           # 应用入口
+│   └── main.ts           # 应用入口
 ├── .gitignore            # Git 忽略配置
 ├── package.json          # 项目信息及依赖
 ├── README.md             # 项目说明文档
-└── vite.config.js        # Vite 配置
+└── vite.config.ts        # Vite 配置
 ```
 
 ---

@@ -64,18 +64,19 @@ Docker Compose 一键部署教程请参考 [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)
 
 # 技术框架
 
-基于Java EE平台，采用Spring、MySQL、Tomcat等开源技术，具有良好扩展性。 
+基于 Spring Boot 4 平台，采用 JDK 21、MySQL、Tomcat 等开源技术，具有良好扩展性。 
 
 ## 后端技术
 
 | 框架                     | 说明            | 版本     |
 |------------------------|---------------|--------|
-| Spring Boot            | 系统框架             | 3.4.6 |
-| Mysql Connector        | 数据库驱动           | 8.4.0 |
-| Druid                  | JDBC 连接池、监控组件 |1.2.23 |
-| MyBatis                | MyBatis 数据库工具   | 3.5.19 | 
-| MyBatis Plus           | MyBatis 增强工具包   | 3.5.12 | 
-| Hutool                 | Java工具类库         | 5.8.33 | 
+| JDK                    | Java 运行环境     | 21     |
+| Spring Boot            | 系统框架          | 4.1.0  |
+| Mysql Connector        | 数据库驱动         | 9.7.0  |
+| Druid                  | JDBC 连接池、监控组件 | 1.2.24 |
+| MyBatis                | MyBatis 数据库工具 | 3.5.19 | 
+| MyBatis Plus           | MyBatis 增强工具包 | 3.5.16 | 
+| Hutool                 | Java工具类库      | 5.8.40 | 
 | Lombok                 | 消除冗长的 Java 代码 | 1.18.34 | 
 
 
@@ -83,10 +84,10 @@ Docker Compose 一键部署教程请参考 [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)
 
 | 框架           | 说明        | 版本     |
 |--------------|-----------|--------|
-| vue          | 框架语言      |3.4.31 |
-| vite         | 构建工具      |5.3.2 |
-| element-plus | 组件库        |2.9.9 |
-| echarts      | 报表库        |5.6.0 |
+| vue          | 框架语言      | 3.4.31 |
+| vite         | 构建工具      | 5.4.19 |
+| element-plus | 组件库       | 2.11.3 |
+| echarts      | 报表库       | 5.6.0  |
 
 # 许可证
 

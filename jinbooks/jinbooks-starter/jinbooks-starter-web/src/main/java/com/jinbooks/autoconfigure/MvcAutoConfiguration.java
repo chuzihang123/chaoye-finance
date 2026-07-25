@@ -35,7 +35,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.endpoint.ApiVersion;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.web.server.ConfigurableWebServerFactory;
-import org.springframework.boot.web.server.ErrorPage;
+import org.springframework.boot.web.error.ErrorPage;
 import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -45,7 +45,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.http.converter.xml.MarshallingHttpMessageConverter;
 import org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter;
 import org.springframework.web.client.RestTemplate;
@@ -57,8 +57,8 @@ import org.springframework.web.servlet.i18n.LocaleChangeInterceptor;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 
 @AutoConfiguration
@@ -84,6 +84,17 @@ public class MvcAutoConfiguration implements WebMvcConfigurer {
         messageSource.setBasenames(messagesBasename,passwordPolicyMessagesBasename);
         messageSource.setUseCodeAsDefaultMessage(false);
         return messageSource;
+    }
+
+    /**
+     * [Spring Boot 4 升级] Spring Boot 4 把 StringHttpMessageConverter bean 自动配置移除
+     * (改用 ServerHttpMessageConvertersCustomizer 机制),但项目旧版 requestMappingHandlerAdapter 仍直接
+     * 注入该 bean,这里手动注册一个保持兼容.
+     * @return stringHttpMessageConverter
+     */
+    @Bean
+    StringHttpMessageConverter stringHttpMessageConverter() {
+        return new StringHttpMessageConverter();
     }
 
     /**
@@ -131,23 +142,21 @@ public class MvcAutoConfiguration implements WebMvcConfigurer {
      * mappingJacksonHttpMessageConverter .
      * @return mappingJacksonHttpMessageConverter
      */
+    // [Spring Boot 4 升级] 改用 JacksonJsonHttpMessageConverter (Jackson 3 转换器, 操作 tools.jackson.databind.json.JsonMapper)
     @Bean(name = "mappingJacksonHttpMessageConverter")
-    MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
-        MappingJackson2HttpMessageConverter mappingJacksonHttpMessageConverter = new MappingJackson2HttpMessageConverter();
+    JacksonJsonHttpMessageConverter mappingJacksonHttpMessageConverter() {
+        // Jackson 3 builder 模式: JsonMapper.builder().configure().defaultDateFormat().build()
+        JsonMapper jsonMapper = JsonMapper.builder()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .defaultDateFormat(new SimpleDateFormat(pattern))
+                .build();
+        JacksonJsonHttpMessageConverter mappingJacksonHttpMessageConverter = new JacksonJsonHttpMessageConverter(jsonMapper);
         ArrayList<MediaType> mediaTypesList = new ArrayList<>();
         mediaTypesList.add(MediaType.APPLICATION_JSON);
         mediaTypesList.add(MediaType.valueOf(ApiVersion.V2.getProducedMimeType().toString()));
         mediaTypesList.add(MediaType.valueOf(ApiVersion.V3.getProducedMimeType().toString()));
-        //mediaTypesList.add(MediaType.TEXT_PLAIN)
         logger.debug("mappingJacksonHttpMessageConverter MediaTypes {}" , mediaTypesList);
         mappingJacksonHttpMessageConverter.setSupportedMediaTypes(mediaTypesList);
-        ObjectMapper objectMapper = mappingJacksonHttpMessageConverter.getObjectMapper();
-        // 返回时间格式化
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        logger.debug("ObjectMapper DateFormat {}" , pattern);
-        objectMapper.setDateFormat(new SimpleDateFormat(pattern));
-        // 设置格式化内容
-        mappingJacksonHttpMessageConverter.setObjectMapper(objectMapper);
         return mappingJacksonHttpMessageConverter;
     }
 
@@ -175,7 +184,7 @@ public class MvcAutoConfiguration implements WebMvcConfigurer {
      */
     @Bean(name = "addConverterRequestMappingHandlerAdapter")
     RequestMappingHandlerAdapter requestMappingHandlerAdapter(
-            MappingJackson2HttpMessageConverter mappingJacksonHttpMessageConverter,
+            JacksonJsonHttpMessageConverter mappingJacksonHttpMessageConverter,
             MarshallingHttpMessageConverter marshallingHttpMessageConverter,
             StringHttpMessageConverter stringHttpMessageConverter,
             RequestMappingHandlerAdapter requestMappingHandlerAdapter) {
@@ -199,7 +208,7 @@ public class MvcAutoConfiguration implements WebMvcConfigurer {
      */
     @Bean(name = "restTemplate")
     RestTemplate restTemplate(
-            MappingJackson2HttpMessageConverter mappingJacksonHttpMessageConverter,
+            JacksonJsonHttpMessageConverter mappingJacksonHttpMessageConverter,
             MarshallingHttpMessageConverter marshallingHttpMessageConverter) {
         RestTemplate restTemplate = new RestTemplate();
         List<HttpMessageConverter<?>> httpMessageConverterList = new ArrayList<>();

@@ -6,12 +6,9 @@
 # --------------------------------------------------
 # Stage 1: 构建阶段
 # --------------------------------------------------
-FROM gradle:8.8-jdk17 AS builder
+FROM gradle:8.14.5-jdk21 AS builder
 
 WORKDIR /app
-
-# 【新增】将宿主机本地下载好的 gradle 发行版复制到镜像中
-COPY gradle/gradle-8.8-bin.zip ./gradle/
 
 # 复制 Gradle 配置文件
 COPY gradle.properties settings.gradle build.gradle ./
@@ -47,7 +44,7 @@ RUN ./gradlew :jinbooks-web:bootJar --no-daemon -x test
 # --------------------------------------------------
 # Stage 2: 运行阶段
 # --------------------------------------------------
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:21-jre
 
 # 安装 wget（用于健康检查）
 RUN apt-get update && apt-get install -y --no-install-recommends wget \

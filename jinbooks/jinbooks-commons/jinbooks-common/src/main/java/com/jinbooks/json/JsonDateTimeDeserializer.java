@@ -22,30 +22,30 @@
 
 package com.jinbooks.json;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import java.io.IOException;
+
+import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.exc.ValueInstantiationException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import org.springframework.stereotype.Component;
 
 
 @Component
-public class JsonDateTimeDeserializer extends JsonDeserializer<Date> {
+public class JsonDateTimeDeserializer extends ValueDeserializer<Date> {
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     @Override
     public Date deserialize(JsonParser parser, DeserializationContext dc)
-            throws IOException, JsonProcessingException {
+            throws JacksonException {
         Date parserDate = null;
         try {
             parserDate = dateFormat.parse(parser.getText());
         } catch (ParseException e) {
-            throw new JsonParseException(parser,"Could not parse date", e);
+            throw ValueInstantiationException.from(parser, "Could not parse date", null, e);
         }
         return parserDate;
     }

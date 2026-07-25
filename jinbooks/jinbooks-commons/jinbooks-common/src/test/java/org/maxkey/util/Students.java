@@ -22,7 +22,7 @@ package org.maxkey.util;
 import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 import com.jinbooks.json.JsonStringSerializer;
 
 public class Students {

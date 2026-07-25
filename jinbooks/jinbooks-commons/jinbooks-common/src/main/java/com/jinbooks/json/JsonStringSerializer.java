@@ -22,11 +22,11 @@
 
 package com.jinbooks.json;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import java.io.IOException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonGenerator;
+
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.SerializationContext;
 import org.springframework.stereotype.Component;
 
 /**
@@ -37,11 +37,11 @@ import org.springframework.stereotype.Component;
  */
 
 @Component
-public class JsonStringSerializer extends JsonSerializer<Integer> {
+public class JsonStringSerializer extends ValueSerializer<Integer> {
 	
     @Override
-    public void serialize(Integer value, JsonGenerator gen, SerializerProvider provider)
-            throws IOException, JsonProcessingException {
+    public void serialize(Integer value, JsonGenerator gen, SerializationContext context)
+            throws JacksonException {
         gen.writeString(value.toString());
     }
 }

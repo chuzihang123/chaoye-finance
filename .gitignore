@@ -63,3 +63,4 @@ jinbooks/.gradle/*
 /logs/
 /logs/**
 
+tmp_inspect/**

@@ -20,7 +20,7 @@
 
 package com.jinbooks.web;
 
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import tools.jackson.databind.exc.InvalidFormatException;
 import com.jinbooks.entity.Message;
 import com.jinbooks.exception.BusinessException;
 

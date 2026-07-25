@@ -22,11 +22,11 @@
 
 package com.jinbooks.json;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import java.io.IOException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonGenerator;
+
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.SerializationContext;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.springframework.stereotype.Component;
@@ -38,12 +38,12 @@ import org.springframework.stereotype.Component;
  */
 
 @Component
-public class JsonDateTimeSerializer extends JsonSerializer<Date> {
+public class JsonDateTimeSerializer extends ValueSerializer<Date> {
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     @Override
-    public void serialize(Date date, JsonGenerator gen, SerializerProvider provider)
-            throws IOException, JsonProcessingException {
+    public void serialize(Date date, JsonGenerator gen, SerializationContext context)
+            throws JacksonException {
         String formattedDate = dateFormat.format(date);
         gen.writeString(formattedDate);
     }

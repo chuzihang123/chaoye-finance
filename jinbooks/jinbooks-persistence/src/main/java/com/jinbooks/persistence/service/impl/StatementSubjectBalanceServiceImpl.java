@@ -22,9 +22,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import com.jinbooks.entity.Message;
 import com.jinbooks.entity.SubjectAuxiliary;
 import com.jinbooks.entity.base.AssistAcc;
@@ -199,7 +199,7 @@ public class StatementSubjectBalanceServiceImpl implements StatementSubjectBalan
                         }
                     }
                 }
-            } catch (JsonProcessingException e) {
+            } catch (tools.jackson.core.JacksonException e) {
                 throw new RuntimeException(e);
             }
         }
