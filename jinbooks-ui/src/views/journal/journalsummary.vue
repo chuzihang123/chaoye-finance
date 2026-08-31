@@ -113,6 +113,7 @@ import {ref, getCurrentInstance, reactive, toRefs} from "vue";
 import modal from "@/plugins/modal";
 import * as journalSummaryService from "@/api/journal/journalsummaryservice";
 import {formatAmount} from "@/utils"
+import booksSetStore from "@/store/modules/bookStore";
 import {useI18n} from "vue-i18n";
 import {h} from 'vue'
 import type {VNode} from 'vue'
@@ -133,6 +134,8 @@ const total: any = ref(0);
 const title: any = ref("");
 let tableSummary: any = ref([]);
 
+const currBookStore = booksSetStore();
+
 const data: any = reactive({
   form: {
     id: undefined,
@@ -144,7 +147,7 @@ const data: any = reactive({
   queryParams: {
     pageNumber: 1,
     pageSize: 10,
-    yearPeriodPicker: dayjs(new Date()).format("YYYY-MM"),
+    yearPeriodPicker: currBookStore.termCurrent ? currBookStore.termCurrent : dayjs(new Date()).format("YYYY-MM"),
     providerName: undefined
   },
   rules: {

@@ -471,8 +471,8 @@ function viewVoucher(voucherId: any) {
     })
     voucherForm.value = response.data
     voucherOpen.value = true;
-    voucherPreviewMode.value = false;
-    voucherTitle.value = "凭证记录";
+    voucherPreviewMode.value = response.data.status !== 'draft';
+    voucherTitle.value = voucherPreviewMode.value ? "凭证预览" : "凭证记录";
   });
 }
 

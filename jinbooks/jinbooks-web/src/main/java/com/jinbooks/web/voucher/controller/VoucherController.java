@@ -141,6 +141,10 @@ public class VoucherController {
     @DeleteMapping("/delete/{ids}")
     public Message<String> delete(@PathVariable(name = "ids") List<String> ids,
                                   @CurrentUser UserInfo userInfo) {
+        Message<String> check = voucherService.checkDeletable(ids, userInfo.getBookId());
+        if (check.getCode() != Message.SUCCESS) {
+            return check;
+        }
         return voucherService.delete(ids, userInfo.getBookId());
     }
 

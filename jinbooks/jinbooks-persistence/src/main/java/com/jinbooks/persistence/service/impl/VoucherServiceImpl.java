@@ -29,7 +29,11 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jinbooks.entity.Message;
 import com.jinbooks.entity.book.Book;
 import com.jinbooks.entity.book.BookSubject;
+import com.jinbooks.entity.book.Settlement;
+import com.jinbooks.entity.book.SettlementCarryforward;
+import com.jinbooks.entity.hr.EmployeeSalary;
 import com.jinbooks.entity.idm.UserInfo;
+import com.jinbooks.entity.journal.JournalEntry;
 import com.jinbooks.entity.voucher.*;
 import com.jinbooks.entity.voucher.dto.*;
 import com.jinbooks.entity.voucher.vo.VoucherItemVo;
@@ -58,6 +62,7 @@ import org.springframework.util.ResourceUtils;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.YearMonth;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -85,6 +90,10 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     private final StandardSubjectCashFlowMapper standardSubjectCashFlowMapper;
     private final VoucherItemCashFlowMapper voucherItemCashFlowMapper;
     private final EmployeeSalarySummaryMapper employeeSalarySummaryMapper;
+    private final JournalEntryMapper journalEntryMapper;
+    private final SettlementCarryforwardMapper settlementCarryforwardMapper;
+    private final EmployeeSalaryMapper employeeSalaryMapper;
+    private final SettlementMapper settlementMapper;
 
     @Override
     public Message<Page<VoucherItemVo>> subLedger(VoucherItemPageDto paramsDto) {
@@ -773,6 +782,64 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
 
 
         return update == ids.size() ? new Message<>(Message.SUCCESS, "删除成功") : new Message<>(Message.FAIL, "删除失败");
+    }
+
+    /**
+     * 校验凭证是否允许删除：仅允许删除凭证管理手工创建的凭证，
+     * 出纳日记账、系统结转/薪酬生成的凭证不允许删除，避免业务数据无法回溯；
+     * 且仅允许删除当前账期及以后、未结账账期的凭证
+     *
+     * @param ids    凭证ID
+     * @param bookId 账簿ID
+     * @return 校验结果
+     */
+    @Override
+    public Message<String> checkDeletable(List<String> ids, String bookId) {
+        if (ids == null || ids.isEmpty()) {
+            return new Message<>(Message.FAIL, "未选择数据对象");
+        }
+        // 仅允许删除当前账期及以后且未结账账期的凭证
+        List<Voucher> vouchers = list(Wrappers.<Voucher>lambdaQuery()
+                .eq(Voucher::getBookId, bookId)
+                .in(Voucher::getId, ids));
+        if (vouchers.size() != ids.size()) {
+            return new Message<>(Message.FAIL, "凭证不存在或无权操作");
+        }
+        String currentTerm = configSysService.getCurrentTerm(bookId);
+        YearMonth currentYearMonth = YearMonth.parse(currentTerm);
+        for (Voucher voucher : vouchers) {
+            if (voucher.getVoucherYear() == null || voucher.getVoucherMonth() == null) {
+                continue;
+            }
+            String period = String.format("%d-%02d", voucher.getVoucherYear(), voucher.getVoucherMonth());
+            if (YearMonth.parse(period).isBefore(currentYearMonth)) {
+                return new Message<>(Message.FAIL, "凭证[" + voucher.getWord() + "]所在账期[" + period
+                        + "]早于当前账期[" + currentTerm + "]，只能删除当前及以后账期的凭证");
+            }
+            if (settlementMapper.selectCount(Wrappers.<Settlement>lambdaQuery()
+                    .eq(Settlement::getBookId, bookId)
+                    .eq(Settlement::getYear, voucher.getVoucherYear())
+                    .eq(Settlement::getYearPeriod, period)) > 0) {
+                return new Message<>(Message.FAIL, "凭证[" + voucher.getWord() + "]所在账期[" + period + "]已结账，不允许删除");
+            }
+        }
+        if (journalEntryMapper.selectCount(Wrappers.<JournalEntry>lambdaQuery()
+                .eq(JournalEntry::getBookId, bookId)
+                .in(JournalEntry::getVoucherId, ids)) > 0) {
+            return new Message<>(Message.FAIL, "凭证已被出纳日记账关联使用，不允许删除");
+        }
+        if (settlementCarryforwardMapper.selectCount(Wrappers.<SettlementCarryforward>lambdaQuery()
+                .eq(SettlementCarryforward::getBookId, bookId)
+                .in(SettlementCarryforward::getVoucherId, ids)) > 0) {
+            return new Message<>(Message.FAIL, "系统结转生成的凭证，不允许删除");
+        }
+        if (employeeSalaryMapper.selectCount(Wrappers.<EmployeeSalary>lambdaQuery()
+                .eq(EmployeeSalary::getBookId, bookId)
+                .and(w -> w.in(EmployeeSalary::getAccrualVoucherId, ids)
+                        .or().in(EmployeeSalary::getSalaryVoucherId, ids))) > 0) {
+            return new Message<>(Message.FAIL, "系统薪酬生成的凭证，不允许删除");
+        }
+        return new Message<>(Message.SUCCESS);
     }
 
     /**

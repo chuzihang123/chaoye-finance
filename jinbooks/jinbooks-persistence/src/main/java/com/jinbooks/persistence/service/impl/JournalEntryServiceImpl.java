@@ -187,23 +187,42 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
     public Message<String> delete(ListIdsDto dto) {
         List<String> listIds = dto.getListIds();
         List<String> removeableListIds = new ArrayList<>();
+        List<String> voucherIds = new ArrayList<>();
+        String bookId = null;
         boolean result = false;
         for(String id : listIds) {
 	        JournalEntry journalEntry = super.getById(id);
-	        //判断账期是否结账
-	        String period = DateUtils.format(journalEntry.getTradeDate(),DateUtils.FORMAT_DATE_YYYY_MM);
-	        Message<String> check = settlementService.check(journalEntry.getBookId(), period);
-	        if(check.getCode() == 0) {
-	        	removeableListIds.add(id);
-		        if(journalEntry.getDirection().equalsIgnoreCase("i")
-		        		||journalEntry.getDirection().equalsIgnoreCase("o")) {
-		        	//支出退回
-		        	journalAccountService.expenditure(journalEntry.getAccId(), journalEntry.getIncome());
-		        }else {
-		        	//收入减去
-		        	journalAccountService.income(journalEntry.getAccId(), journalEntry.getExpenditure());
+	        if(journalEntry == null) {
+	        	continue;
+	        }
+	        bookId = journalEntry.getBookId();
+	        //判断账期是否结账，已结账账期不允许删除
+	        if(journalEntry.getTradeDate() != null) {
+		        String period = DateUtils.format(journalEntry.getTradeDate(),DateUtils.FORMAT_DATE_YYYY_MM);
+		        Message<String> check = settlementService.check(bookId, period);
+		        if(check.getCode() != 0) {
+		        	return new Message<>(Message.FAIL, "日记账所在账期[" + period + "]已结账，不允许删除");
 		        }
 	        }
+	        removeableListIds.add(id);
+	        //已生成凭证的，同步删除凭证（已提交凭证按凭证管理删除流程处理）
+	        if(StringUtils.isNotBlank(journalEntry.getVoucherId())) {
+	        	voucherIds.add(journalEntry.getVoucherId());
+	        }
+	        if(journalEntry.getDirection().equalsIgnoreCase("i")
+	        		||journalEntry.getDirection().equalsIgnoreCase("o")) {
+	        	//支出退回
+	        	journalAccountService.expenditure(journalEntry.getAccId(), journalEntry.getIncome());
+	        }else {
+	        	//收入减去
+	        	journalAccountService.income(journalEntry.getAccId(), journalEntry.getExpenditure());
+	        }
+        }
+        if(!voucherIds.isEmpty()) {
+        	Message<String> voucherMsg = voucherService.delete(voucherIds, bookId);
+        	if(voucherMsg.getCode() != Message.SUCCESS) {
+        		return voucherMsg;
+        	}
         }
         result = super.removeBatchByIds(removeableListIds);
 
@@ -216,9 +235,9 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
 		Book book = bookMapper.selectById(bookId);
 		JournalEntry journalEntry = super.getById(dto.getId());
 		
-	     // 格式化日期
-        Date formattedDate = DateUtils.getCurrentDate();
-        
+	     // 使用日记账的交易日期作为凭证日期
+        Date formattedDate = journalEntry.getTradeDate() != null ? journalEntry.getTradeDate() : DateUtils.getCurrentDate();
+
         //判断账期是否结账
         String period = DateUtils.format(formattedDate,DateUtils.FORMAT_DATE_YYYY_MM);
         Message<String> check = settlementService.check(bookId, period);

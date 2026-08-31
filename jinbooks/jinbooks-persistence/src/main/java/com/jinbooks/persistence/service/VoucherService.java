@@ -47,6 +47,8 @@ public interface VoucherService extends IService<Voucher> {
 
     Message<String> delete(List<String> ids, String bookId);
 
+    Message<String> checkDeletable(List<String> ids, String bookId);
+
     Message<Integer> getAbleWordNum(String bookId, String head, Integer year, Integer month);
 
     Message<String> submit(VoucherChangeDto dto, boolean update);
