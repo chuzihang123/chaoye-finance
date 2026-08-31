@@ -62,6 +62,18 @@
 
 Docker Compose 一键部署教程请参考 [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)
 
+# Windows 本地一键启动 (无需 Docker)
+
+社区版用户如果不想装 Docker, 只想在 Windows 上双击 bat 就跑起来, 请用我们打包好的便携版:
+**MySQL 8 + Redis 8 + JRE 21 + Nginx + Spring Boot 后端 jar + 前端 dist** 全部自带, 跑在非常规端口 (`33306/36379/32315/32080`) 避免冲突。
+
+📘 完整文档: [README_LOCAL.md](README_LOCAL.md)
+
+快速三步:
+1. 右键 `init_local.bat` → 以管理员身份运行 (首次约 5-10 分钟, 需联网下载组件)
+2. 右键 `start_one_window.bat` → 单窗口 + 实时日志
+3. 浏览器打开 `http://127.0.0.1:32080`
+
 # 技术框架
 
 基于 Spring Boot 4 平台，采用 JDK 21、MySQL、Tomcat 等开源技术，具有良好扩展性。 

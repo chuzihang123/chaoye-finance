@@ -342,6 +342,10 @@ function getAccList(): any {
         })
       }
       console.log(accOptions);
+      if (!form.value.accId && accOptions.value.length > 0) {
+        form.value.accId = accOptions.value[0].value;
+        handleAccIdChange(form.value.accId);
+      }
       //formRef.forceUpdate();
     }
   });

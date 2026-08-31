@@ -64,3 +64,5 @@ jinbooks/.gradle/*
 /logs/**
 
 tmp_inspect/**
+# ===== JinBooks 本地一键启动环境 (Windows) =====
+jinbooks_envs/**

@@ -51,6 +51,10 @@ public class JournalAccountDto {
 	
 	Integer sortIndex;
 	/**
+	 * 期初余额（开户时初始余额，仅新增可设置）
+	 */
+	BigDecimal openingBalance;
+	/**
 	 * 账户余额
 	 */
 	BigDecimal balance;

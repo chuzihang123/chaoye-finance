@@ -304,6 +304,7 @@ export default {
       "subjectId": "科目",
       "currency": "币种",
       "balance": "余额",
+      "openingBalance": "余额设置",
       "bankNo": "卡号",
       "bank": "银行/机构"
     },
@@ -316,7 +317,7 @@ export default {
       },
       "remark": "摘要",
       "tradeDate": "交易日期",
-      "accId": "账户ID",
+      "accId": "使用账户",
       "accCode": "账户编码",
       "accName": "账户名称",
       "subjectId": "对方科目",

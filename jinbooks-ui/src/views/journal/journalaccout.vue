@@ -78,9 +78,9 @@
     </el-card>
     <!-- 添加或修改参数配置对话框 -->
     <el-dialog :title="title" v-model="open" width="600px" append-to-body>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item prop="category" :label="$t('jbx.journalaccout.category.category')" :required="true">
-          <el-select v-model="form.category" clearable>
+          <el-select v-model="form.category" :disabled="form.id != undefined" style="width: 100%">
             <el-option
                 v-for="dict in journalAccout_category_types"
                 :key="dict.value"
@@ -90,28 +90,60 @@
           </el-select>
         </el-form-item>
         <el-form-item :label="$t('jbx.journalaccout.accCode')" prop="accCode">
-          <el-input v-model="form.accCode" placeholder=""/>
+          <el-input v-model="form.accCode" maxlength="50" show-word-limit placeholder="请输入账户编码"/>
         </el-form-item>
         <el-form-item :label="$t('jbx.journalaccout.accName')" prop="accName">
-          <el-input v-model="form.accName" placeholder=""/>
+          <el-input v-model="form.accName" maxlength="50" show-word-limit placeholder="请输入账户名称"/>
         </el-form-item>
         <el-form-item :label="$t('jbx.journalaccout.subjectId')" prop="subjectId">
-          <el-input v-model="form.subjectId" placeholder=""/>
+          <el-tree-select
+              v-model="form.subjectId"
+              :data="subjectOptions"
+              :props="defaultProps"
+              check-strictly
+              filterable
+              clearable
+              style="width: 100%"
+              placeholder="请选择入账科目"
+          />
         </el-form-item>
         <el-form-item :label="$t('jbx.journalaccout.currency')" prop="currency">
-          <el-input v-model="form.currency" placeholder=""/>
+          <el-select
+              v-model="form.currency"
+              filterable
+              allow-create
+              default-first-option
+              clearable
+              style="width: 100%"
+              placeholder="请选择币种"
+          >
+            <el-option v-for="item in currencyOptions" :key="item" :label="item" :value="item"/>
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="$t('jbx.journalaccout.openingBalance')" prop="openingBalance">
+          <el-input-number
+              v-model="form.openingBalance"
+              :precision="2"
+              :step="100"
+              :controls="false"
+              :disabled="form.id != undefined"
+              style="width: 100%"
+              placeholder="开户时初始余额"/>
+          <div v-if="form.id != undefined" style="line-height: 1.5; color: #909399; font-size: 12px">
+            开户初始余额不可修改，余额变动请在日记账中处理
+          </div>
         </el-form-item>
         <el-form-item :label="$t('jbx.journalaccout.bankNo')" prop="bankNo">
-          <el-input v-model="form.bankNo" placeholder=""/>
+          <el-input v-model="form.bankNo" maxlength="30" show-word-limit placeholder="请输入银行卡号"/>
         </el-form-item>
         <el-form-item :label="$t('jbx.journalaccout.bank')" prop="bank">
-          <el-input v-model="form.bank" placeholder=""/>
+          <el-input v-model="form.bank" maxlength="100" show-word-limit placeholder="请输入银行名称/机构"/>
         </el-form-item>
         <el-form-item :label="$t('jbx.text.sortIndex')" prop="sortIndex">
-          <el-input-number v-model="form.sortIndex" placeholder=""/>
+          <el-input-number v-model="form.sortIndex" :min="0" :step="1" :precision="0" step-strictly controls-position="right" style="width: 100%"/>
         </el-form-item>
         <el-form-item :label="$t('jbx.text.description')" prop="description">
-          <el-input v-model="form.description" placeholder=""/>
+          <el-input v-model="form.description" type="textarea" :rows="2" maxlength="200" show-word-limit placeholder="请输入备注"/>
         </el-form-item>
         <el-form-item prop="status" :label="$t('jbx.users.status')">
           <el-switch
@@ -147,6 +179,8 @@ import {h} from 'vue'
 import type {VNode} from 'vue'
 import {useI18n} from "vue-i18n";
 import {formatAmount} from "@/utils"
+import booksSetStore from "@/store/modules/bookStore";
+import {getTree} from "@/api/system/standard/standard-subject";
 
 const {proxy} = getCurrentInstance()!;
 const formRef = ref<InstanceType<typeof ElForm> | null>(null);
@@ -164,14 +198,61 @@ const total: any = ref(0);
 const title: any = ref("");
 const accountAllBalance: any = ref(0);
 
+const currBookStore = booksSetStore();
+
 const {journalAccout_category_types}
     = proxy?.useDict("journalAccout_category_types");
+
+const currencyOptions = ['人民币', '美元', '欧元', '日元', '港币', '英镑'];
+
+const subjectOptions: any = ref<any[]>([]);
+const subjectList: any = ref<any[]>([]);
+const defaultProps: any = ref({
+  value: 'id',
+  children: 'children',
+  label: 'name',
+  disabled: disabledFilter
+});
+
+function disabledFilter(nodeData: any, node: any): any {
+  if (!currBookStore.bookId) {
+    return false;
+  }
+  return new RegExp(`/${currBookStore.bookId}(/|$)`).test(nodeData.idPath)
+}
+
+interface TreeNode {
+  id: string | number;
+  name: string;
+  children?: TreeNode[];
+}
+
+function buildSubject(nodes: TreeNode[]) {
+  for (let i = 0; i < nodes.length; i++) {
+    let item = nodes[i];
+    subjectList.value.push(item);
+    if (item.children) {
+      buildSubject(item.children);
+    }
+  }
+}
+
+function getSubjectTree() {
+  getTree({bookId: currBookStore.bookId}).then((response: { data: TreeNode[] }) => {
+    subjectOptions.value = response.data;
+    buildSubject(response.data);
+  });
+}
+
+getSubjectTree();
 
 const data: any = reactive({
   form: {
     id: undefined,
     scanCode: 'false',
     display: 'false',
+    currency: '人民币',
+    openingBalance: 0,
     sortIndex: 1,
     status: 1
   },
@@ -181,11 +262,11 @@ const data: any = reactive({
     providerName: undefined
   },
   rules: {
-    icon: [{required: true, message: 'Not empty', trigger: "blur"}],
-    provider: [{required: true, message: 'Not empty', trigger: "blur"}],
-    providerName: [{required: true, message: 'Not empty', trigger: "blur"}],
-    clientId: [{required: true, message: 'Not empty', trigger: "blur"}],
-    clientSecret: [{required: true, message: 'Not empty', trigger: "blur"}]
+    category: [{required: true, message: '请选择账户类型', trigger: "change"}],
+    accCode: [{required: true, message: '请输入账户编码', trigger: "blur"}],
+    accName: [{required: true, message: '请输入账户名称', trigger: "blur"}],
+    currency: [{required: true, message: '请选择币种', trigger: "change"}],
+    openingBalance: [{type: 'number', message: '余额必须为数字', trigger: "blur"}]
   },
 });
 
@@ -259,6 +340,8 @@ function reset(): any {
     id: undefined,
     scanCode: 'false',
     display: 'false',
+    currency: '人民币',
+    openingBalance: 0,
     sortIndex: 1,
     status: 1
   };

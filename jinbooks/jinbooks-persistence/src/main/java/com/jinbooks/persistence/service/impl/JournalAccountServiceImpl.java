@@ -61,8 +61,12 @@ public class JournalAccountServiceImpl extends ServiceImpl<JournalAccountMapper,
     public Message<String> save(JournalAccountDto dto) {
         JournalAccount account = new JournalAccount();
         BeanUtil.copyProperties(dto, account);
-        //通过新增记录初始化
-        account.setOpeningBalance(null);
+        //期初余额仅新增时可设置, 开户余额即期初余额
+        if (account.getOpeningBalance() != null) {
+            account.setBalance(account.getOpeningBalance());
+        } else {
+            account.setOpeningBalance(null);
+        }
         boolean saveResult = super.save(account);
         return saveResult ? new Message<>(Message.SUCCESS, "新增成功") : new Message<>(Message.FAIL, "新增失败");
     }
@@ -73,8 +77,9 @@ public class JournalAccountServiceImpl extends ServiceImpl<JournalAccountMapper,
         String id = dto.getId();
         JournalAccount account = super.getById(id);
         BeanUtil.copyProperties(dto, account);
-        //通过新增记录初始化
+        //期初余额与余额不可通过编辑修改
         account.setOpeningBalance(null);
+        account.setBalance(null);
         boolean result = super.updateById(account);
         return result ? new Message<>(Message.SUCCESS, "修改成功") : new Message<>(Message.FAIL, "修改失败");
     }

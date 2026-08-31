@@ -26,6 +26,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jinbooks.entity.Message;
 import com.jinbooks.entity.book.Book;
+import com.jinbooks.entity.book.BookSubject;
 import com.jinbooks.entity.dto.ListIdsDto;
 import com.jinbooks.entity.journal.JournalAccount;
 import com.jinbooks.entity.journal.JournalEntry;
@@ -38,12 +39,14 @@ import com.jinbooks.enums.VoucherStatusEnum;
 import com.jinbooks.exception.BusinessException;
 import com.jinbooks.persistence.mapper.BookMapper;
 import com.jinbooks.persistence.mapper.JournalEntryMapper;
+import com.jinbooks.persistence.service.BookSubjectService;
 import com.jinbooks.persistence.service.JournalAccountService;
 import com.jinbooks.persistence.service.JournalEntryService;
 import com.jinbooks.persistence.service.SettlementService;
 import com.jinbooks.persistence.service.VoucherService;
 import com.jinbooks.util.DateUtils;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,7 +60,10 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
 
 	@Autowired
 	JournalAccountService journalAccountService;
-	
+
+	@Autowired
+	BookSubjectService bookSubjectService;
+
 	@Autowired
     BookMapper bookMapper;
 	
@@ -221,10 +227,10 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
         }
         
         BigDecimal amount = null;
-		if(journalEntry.getDirection().equalsIgnoreCase("i")) {
-			amount = journalEntry.getIncome();
-		}else {
+		if(journalEntry.getDirection().equalsIgnoreCase("e")) {
 			amount = journalEntry.getExpenditure();
+		}else {
+			amount = journalEntry.getIncome();
 		}
 		
         Calendar calendar = Calendar.getInstance();
@@ -246,29 +252,41 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
         voucherDto.setDebitAmount(amount);
         voucherDto.setCreditAmount(amount);
         
+        // 账户的入账科目（现金/银行科目）
+        JournalAccount journalAccount = journalAccountService.getById(journalEntry.getAccId());
+        if (journalAccount == null || StringUtils.isBlank(journalAccount.getSubjectId())) {
+        	return new Message<>(Message.FAIL, "生成凭证失败：账户未设置入账科目，请先在账户中设置");
+        }
+        BookSubject accSubject = bookSubjectService.getById(journalAccount.getSubjectId());
+        if (accSubject == null) {
+        	return new Message<>(Message.FAIL, "生成凭证失败：账户入账科目不存在");
+        }
+        // 日记账选择的对方科目
+        if (StringUtils.isBlank(journalEntry.getSubjectId())) {
+        	return new Message<>(Message.FAIL, "生成凭证失败：请先为日记账选择对方科目");
+        }
+        BookSubject counterSubject = bookSubjectService.getById(journalEntry.getSubjectId());
+        if (counterSubject == null) {
+        	return new Message<>(Message.FAIL, "生成凭证失败：对方科目不存在");
+        }
+
 	     // 创建凭证项
         List<VoucherItemChangeDto> voucherItems = new ArrayList<>();
         //
-        VoucherItemChangeDto debitItemDto = new VoucherItemChangeDto();
-        debitItemDto.setSummary(journalEntry.getRemark());
-        debitItemDto.setSubjectId(bookId);
-        debitItemDto.setSubjectName(bookId);
-        debitItemDto.setSubjectCode(bookId);
-        debitItemDto.setDebitAmount(amount);
-        debitItemDto.setAuxiliary(List.of());
-        debitItemDto.setDetailedAccounts("");
+        VoucherItemChangeDto debitItemDto = null;
+        VoucherItemChangeDto creditItemDto = null;
+        if (journalEntry.getDirection().equalsIgnoreCase("e")) {
+        	// 支出：借方记对方科目，贷方记现金/银行科目
+        	debitItemDto = createJournalVoucherItem(journalEntry.getRemark(), counterSubject, amount, true);
+        	creditItemDto = createJournalVoucherItem(journalEntry.getRemark(), accSubject, amount, false);
+        } else {
+        	// 收入/初始化：借方记现金/银行科目，贷方记对方科目
+        	debitItemDto = createJournalVoucherItem(journalEntry.getRemark(), accSubject, amount, true);
+        	creditItemDto = createJournalVoucherItem(journalEntry.getRemark(), counterSubject, amount, false);
+        }
         voucherItems.add(debitItemDto);
-        //
-        VoucherItemChangeDto creditItemDto = new VoucherItemChangeDto();
-        creditItemDto.setSummary(journalEntry.getRemark());
-        creditItemDto.setCreditAmount(amount);
-        creditItemDto.setSubjectId(bookId);
-        creditItemDto.setSubjectName(bookId);
-        creditItemDto.setSubjectCode(bookId);
-        creditItemDto.setAuxiliary(List.of());
-        creditItemDto.setDetailedAccounts("");
         voucherItems.add(creditItemDto);
-        
+
         voucherDto.setRemark(journalEntry.getRemark());
         // 暂存凭证
         voucherDto.setItems(voucherItems);
@@ -282,5 +300,22 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
     	super.update(updateWrapper);
     	
 		return Message.ok(voucherDto.getId());
+	}
+
+	private VoucherItemChangeDto createJournalVoucherItem(String summary, BookSubject subject, BigDecimal amount, boolean debit) {
+		VoucherItemChangeDto itemDto = new VoucherItemChangeDto();
+		itemDto.setSummary(summary);
+		itemDto.setSubjectId(subject.getId());
+		itemDto.setSubjectCode(subject.getCode());
+		itemDto.setSubjectName(subject.getCode() + "-" + subject.getName());
+		itemDto.setSubjectBalance(subject.getBalance());
+		if (debit) {
+			itemDto.setDebitAmount(amount);
+		} else {
+			itemDto.setCreditAmount(amount);
+		}
+		itemDto.setAuxiliary(List.of());
+		itemDto.setDetailedAccounts("");
+		return itemDto;
 	}
 }
