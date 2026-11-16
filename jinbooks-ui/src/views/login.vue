@@ -41,7 +41,7 @@
           </template>
         </el-input>
       </el-form-item>
-      <el-form-item prop="code" v-if="captchaEnabled">
+      <el-form-item prop="captcha" v-if="captchaEnabled">
         <el-input
             v-model="loginForm.captcha"
             auto-complete="off"
@@ -137,6 +137,7 @@ const codeUrl: any = ref("");
 const loading: any = ref(false);
 // 验证码开关
 const captchaEnabled: any = ref(false);
+const captchaType = ref('NONE');
 // 注册开关
 const register: any = ref(false);
 const redirect: any = ref("");
@@ -195,7 +196,7 @@ function handleLogin(): any {
 }
 
 function getCode(): any {
-  getCodeImg(state.value, captchaEnabled.value).then((res: any) => {
+  getCodeImg(state.value, captchaType.value).then((res: any) => {
     if (captchaEnabled.value) {
       codeUrl.value = res.data.image;
       state.value = res.data.state
@@ -227,7 +228,8 @@ function getState(): any {
 
       appStore().setAppInfo(staticAppInfo.value)
       state.value = res.data.state
-      captchaEnabled.value = res.data.captcha
+      captchaType.value = String(res.data.captcha ?? 'NONE').trim().toUpperCase()
+      captchaEnabled.value = !['NONE', 'FALSE', 'OFF', 'NO', '0', ''].includes(captchaType.value)
       if (captchaEnabled.value) {
         getCode();
       }

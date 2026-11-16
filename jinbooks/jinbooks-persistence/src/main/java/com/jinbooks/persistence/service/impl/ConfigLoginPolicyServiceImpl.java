@@ -58,6 +58,15 @@ public class ConfigLoginPolicyServiceImpl extends ServiceImpl<ConfigLoginPolicyM
 	}
 
 	@Override
+	public boolean updateById(ConfigLoginPolicy policy) {
+		boolean updated = super.updateById(policy);
+		if (updated) {
+			configLoginPolicyStore.invalidate(CONFIG_LOGIN_POLICY_KEY);
+		}
+		return updated;
+	}
+
+	@Override
 	public ConfigLoginPolicy getConfigLoginPolicy() {
 		ConfigLoginPolicy configLoginPolicy = configLoginPolicyStore.getIfPresent(CONFIG_LOGIN_POLICY_KEY);
         if (configLoginPolicy == null) {

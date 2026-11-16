@@ -29,6 +29,7 @@ import lombok.NoArgsConstructor;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -95,7 +96,8 @@ public class ConfigLoginPolicy implements Serializable {
 
 	String bookId;
 
-	public boolean isTwoFactor(){
+	@JsonIgnore
+	public boolean isTwoFactorEnabled(){
 		return this.twoFactor > 0;
 	}
 
