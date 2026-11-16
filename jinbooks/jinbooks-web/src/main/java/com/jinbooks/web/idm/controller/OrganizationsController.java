@@ -79,6 +79,10 @@ public class OrganizationsController {
 
     @Autowired
     IdentifierGenerator identifierGenerator;
+    @Autowired
+    com.jinbooks.persistence.mapper.EmployeeMapper employeeMapper;
+    @Autowired
+    com.jinbooks.persistence.mapper.BookMapper bookMapper;
 
     @GetMapping(value = {"/fetch"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public Message<Page<Organizations>> fetch(@ParameterObject OrgPageDto dto, @CurrentUser UserInfo currentUser) {
@@ -143,7 +147,21 @@ public class OrganizationsController {
     }
 
     @DeleteMapping(value = {"/delete"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    @org.springframework.transaction.annotation.Transactional
     public Message<Organizations> delete(@RequestParam("ids") List<String> ids, @CurrentUser UserInfo currentUser) {
+        if (bookMapper.selectForUpdate(currentUser.getBookId()) == null) return new Message<>(400, "账套不存在");
+        if (employeeMapper.exists(new LambdaQueryWrapper<com.jinbooks.entity.hr.Employee>()
+                .eq(com.jinbooks.entity.hr.Employee::getBookId, currentUser.getBookId())
+                .in(com.jinbooks.entity.hr.Employee::getDepartmentId, ids))) {
+            return new Message<>(400, "部门仍有员工引用，不能删除");
+        }
+        if (organizationsService.count(new LambdaQueryWrapper<Organizations>()
+                .eq(Organizations::getBookId, currentUser.getBookId()).in(Organizations::getId, ids)) != ids.size()) {
+            return new Message<>(403, "部门不存在或不属于当前账套");
+        }
+        if (organizationsService.count(new LambdaQueryWrapper<Organizations>()
+                .eq(Organizations::getBookId, currentUser.getBookId()).in(Organizations::getParentId, ids)
+                .notIn(Organizations::getId, ids)) > 0) return new Message<>(400, "请先处理下级部门");
         logger.debug("-delete  ids : {} ", ids);
         if (organizationsService.removeByIds(ids)) {
             historySystemLogsService.log(

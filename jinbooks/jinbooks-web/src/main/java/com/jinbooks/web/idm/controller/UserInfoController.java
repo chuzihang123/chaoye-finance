@@ -82,6 +82,8 @@ import jakarta.servlet.http.HttpServletResponse;
 @RestController
 @RequestMapping(value = { "/users" })
 public class UserInfoController {
+    @Autowired
+    com.jinbooks.authn.web.RequestPermissionService requestPermissionService;
 	static final Logger logger = LoggerFactory.getLogger(UserInfoController.class);
 
 	@Autowired
@@ -148,6 +150,9 @@ public class UserInfoController {
 		if (Objects.isNull(currentUser)|| StringUtils.isBlank(bookId)) {
 			return new Message<>(Message.FAIL);
 		}
+        if (!requestPermissionService.canAccessBook(currentUser, bookId)) {
+            return new Message<>(403, "没有该账套访问权限");
+        }
 		currentUser.setBookId(bookId);
 		SignedPrincipal principal  = AuthorizationUtils.getPrincipal();
 		principal.setBookId(bookId);
@@ -207,6 +212,18 @@ public class UserInfoController {
 
 	@PutMapping(value={"/update"}, produces = {MediaType.APPLICATION_JSON_VALUE})
 	public Message<UserInfo> update(@Validated(value = EditGroup.class) @RequestBody  UserInfo userInfo, @CurrentUser UserInfo currentUser) {
+        if (!requestPermissionService.canWrite(currentUser, "PUT", "/users/update")) {
+            if (!currentUser.getId().equals(userInfo.getId())) return new Message<>(403, "只能修改本人资料");
+            UserInfo profile = userInfoService.getById(currentUser.getId());
+            profile.clearSensitive();
+            profile.setId(currentUser.getId());
+            profile.setUsername(currentUser.getUsername());
+            profile.setDisplayName(userInfo.getDisplayName());
+            profile.setNickName(userInfo.getNickName());
+            profile.setMobile(userInfo.getMobile());
+            profile.setEmail(userInfo.getEmail());
+            userInfo = profile;
+        }
 		logger.debug("-update  : {}" , userInfo);
 
 		userInfo.setBookId(currentUser.getBookId());

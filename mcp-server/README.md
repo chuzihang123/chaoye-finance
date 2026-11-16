@@ -14,16 +14,16 @@ MCP 进程由 Codex 启动。系统后端、数据库和 Redis 按项目原有�
 
 ### 通过公开 GitHub 包安装
 
-Node.js 22 及以上可直接运行以下命令。`npm` 分支提供可安装的 MCP 包。
+Node.js 22 及以上可直接运行以下命令。`mcp-v1.1.1` 标签提供固定版本的 MCP 包，`npm` 分支提供当前发布版本。
 
 ```powershell
-npx --yes --package=github:chuzihang123/jinbooks-mcp#npm jinbooks-mcp
+npx --yes --package=github:chuzihang123/jinbooks-mcp#mcp-v1.1.1 jinbooks-mcp
 ```
 
 也可以全局安装后运行。
 
 ```powershell
-npm install --global github:chuzihang123/jinbooks-mcp#npm
+npm install --global github:chuzihang123/jinbooks-mcp#mcp-v1.1.1
 jinbooks-mcp
 ```
 
@@ -32,7 +32,7 @@ jinbooks-mcp
 ```toml
 [mcp_servers.jinbooks]
 command = "npx"
-args = ["--yes", "--package=github:chuzihang123/jinbooks-mcp#npm", "jinbooks-mcp"]
+args = ["--yes", "--package=github:chuzihang123/jinbooks-mcp#mcp-v1.1.1", "jinbooks-mcp"]
 startup_timeout_sec = 120
 tool_timeout_sec = 180
 
@@ -43,6 +43,20 @@ JINBOOKS_PASSWORD = "填写密码"
 ```
 
 首次运行需要联网下载依赖。配置中的账号和密码保存在本机 Codex 配置中。npx 运行时通过客户端环境变量接收配置。源码 `npm start` 支持从当前目录 `.env` 加载配置。当前上传文件的默认允许目录为 MCP 进程工作目录，可使用 `JINBOOKS_UPLOAD_ROOTS` 显式配置。
+
+公开下载包与校验文件可从 [MCP 1.1.1 发布页](https://github.com/chuzihang123/jinbooks-mcp/releases/tag/mcp-v1.1.1) 获取。使用发布包安装时执行以下命令。
+
+```powershell
+npm install --global https://github.com/chuzihang123/jinbooks-mcp/releases/download/mcp-v1.1.1/jinbooks-mcp-1.1.1.tgz
+```
+
+### 1.1.1 更新说明
+
+本版本更新服务版本号和安装说明，MCP 核心调用逻辑沿用 1.1.0。对应后端修复已同步到仓库主分支，包含账套访问和写接口权限校验、上传接口 multipart 定义，以及无效访问令牌的 401 响应。
+
+部署后端更新后重启 MCP 进程，使其重新读取 OpenAPI。普通用户的写操作需要由管理员分配匹配 HTTP 方法及路径的 API 资源权限。管理员身份通过当前角色实时识别。上传工具的 `files.field` 按接口描述填写，当前通用上传接口为 `POST /filestorage/upload/`，文件字段为 `uploadFile`。
+
+使用固定版本配置的客户端更新标签并重新连接 MCP。远程 HTTP 客户端重新初始化会话后可继续调用。MCP 连接令牌、用户账号与密码通过本地或服务端环境变量配置。
 
 ### 从源码安装
 

@@ -161,7 +161,8 @@ const tableCheckData = [
 const tableVerifyData: any = ref<any>([]);
 
 function handleQuery() {
-  queryParams.value.year = (queryParams.value.date + "").substring(0, 4);
+  queryParams.value.year = Number(currentTerm.value.substring(0, 4));
+  queryParams.value.currentTerm = currentTerm.value;
   checkoutButtonLoading.value= true;
   settlementApi.checkout(queryParams.value).then((res: any) => {
     loading.value = false;
@@ -181,6 +182,7 @@ function handleQuery() {
 }
 
 function handleVerify() {
+  isVerify.value = false;
   loadingVerify.value = true;
   settlementApi.verify().then((res: any) => {
     loading.value = false;

@@ -107,12 +107,21 @@ public class SettlementCarryServiceImpl extends ServiceImpl<SettlementMapper, Se
 
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public Message<String> generateVoucher(GenerateVoucherDto dto) {
         logger.debug("GenerateVoucherDto {}", dto);
         String bookId = dto.getBookId();
-        Book book = bookMapper.selectById(bookId);
+        Book book = bookMapper.selectForUpdate(bookId);
+        if (book == null) throw new BusinessException(400, "账套不存在");
         String currentTerm = configSysService.getCurrentTerm(bookId);
         VoucherTemplate voucherTemplate = voucherTemplateMapper.selectById(dto.getTemplateId());
+        if (voucherTemplate == null || (!bookId.equals(voucherTemplate.getRelatedId())
+                && !book.getStandardId().equals(voucherTemplate.getRelatedId()))) {
+            throw new BusinessException(403, "模板不存在或不属于当前账套及会计准则");
+        }
+        var existing = settlementCarryforwardMapper.findByTemplateCode(bookId, currentTerm,
+                voucherTemplate.getCode(), voucherTemplate.getCategory());
+        if (existing != null) return Message.ok(existing.getVoucherId());
         logger.debug("voucherTemplate {}", voucherTemplate);
         LambdaQueryWrapper<VoucherTemplateItem> itemLqw = Wrappers.lambdaQuery();
         itemLqw.eq(VoucherTemplateItem::getRelatedId, voucherTemplate.getRelatedId());
@@ -123,24 +132,19 @@ public class SettlementCarryServiceImpl extends ServiceImpl<SettlementMapper, Se
         BigDecimal debitAmount = BigDecimal.ZERO;
         BigDecimal creditAmount = BigDecimal.ZERO;
 
-        Date voucherDate = null;
-        if(voucherTemplate.getVoucherDate().equals(0)) {
-        	voucherDate = configSysService.getCurrentTermLastDate(bookId);
-        }else if(0 < voucherTemplate.getVoucherDate() && voucherTemplate.getVoucherDate()< 31 ){
-        	String voucherDateString = "";
-        	if(voucherTemplate.getVoucherDate() < 10) {
-        		voucherDateString = currentTerm+"-0"+voucherTemplate.getVoucherDate();
-        	}else {
-        		voucherDateString = currentTerm+"-"+voucherTemplate.getVoucherDate();
-        	}
-        	voucherDate =DateUtils.parse(voucherDateString, DateUtils.FORMAT_DATE_YYYY_MM_DD);
-        }
+        int configuredDay = voucherTemplate.getVoucherDate() == null ? 0 : voucherTemplate.getVoucherDate();
+        if (configuredDay < 0 || configuredDay > 31) throw new BusinessException(400, "模板日期必须在0到31之间");
+        java.time.YearMonth term = java.time.YearMonth.parse(currentTerm);
+        int day = configuredDay == 0 ? term.lengthOfMonth() : Math.min(configuredDay, term.lengthOfMonth());
+        Date voucherDate = DateUtils.parse(term.atDay(day).toString(), DateUtils.FORMAT_DATE_YYYY_MM_DD);
 
         int year = Integer.parseInt(currentTerm.split("-")[0]);
         int month = Integer.parseInt(currentTerm.split("-")[1]);
 
         VoucherChangeDto voucherChangeDto = createVoucherChangeDto(book, bookId, voucherTemplate.getWordHead(), voucherDate, year, month, debitAmount);
-        voucherChangeDto.setRemark(voucherTemplate.getRemark().replace("{yyyy}", year + "").replace("{mm}", month + ""));
+        String remark = org.apache.commons.lang3.StringUtils.defaultString(voucherTemplate.getRemark(),
+                org.apache.commons.lang3.StringUtils.defaultString(voucherTemplate.getName(), "期末结转"));
+        voucherChangeDto.setRemark(remark.replace("{yyyy}", year + "").replace("{mm}", month + ""));
 
         List<VoucherItemChangeDto> voucherItems = new ArrayList<>();
 
@@ -433,17 +437,20 @@ public class SettlementCarryServiceImpl extends ServiceImpl<SettlementMapper, Se
 
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public Message<String> delete(String bookId, String voucherId) {
+        if (bookMapper.selectForUpdate(bookId) == null) throw new BusinessException(400, "账套不存在");
         LambdaQueryWrapper<SettlementCarryforward> carryLqw = Wrappers.lambdaQuery();
         carryLqw.eq(SettlementCarryforward::getBookId, bookId);
         carryLqw.eq(SettlementCarryforward::getVoucherId, voucherId);
         SettlementCarryforward settlementCarryforward = settlementCarryforwardMapper.selectOne(carryLqw);
+        if (settlementCarryforward == null) throw new BusinessException(400, "结转记录不存在或不属于当前账套");
         ArrayList<String> voucherIds = new ArrayList<String>();
         voucherIds.add(settlementCarryforward.getVoucherId());
-        voucherService.delete(voucherIds, bookId);
-
         settlementCarryforwardMapper.delete(carryLqw);
-        return null;
+        Message<String> deleted = voucherService.delete(voucherIds, bookId);
+        if (deleted.getCode() != Message.SUCCESS) throw new BusinessException(deleted.getCode(), deleted.getMessage());
+        return Message.ok("删除成功");
     }
 
 }

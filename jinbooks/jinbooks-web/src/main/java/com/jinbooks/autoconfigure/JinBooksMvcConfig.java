@@ -49,6 +49,9 @@ public class JinBooksMvcConfig implements WebMvcConfigurer {
         permissionInterceptor.setMgmt(true);
 
         registry.addInterceptor(permissionInterceptor)
+                .addPathPatterns("/book/**", "/booksubject/**", "/voucher/**", "/vouchertemplate/**", "/salary/**", "/employee/**",
+                        "/journal/**", "/settlement/**", "/settlementcarry/**", "/statement/**",
+                        "/standard/**", "/standardsubject/**", "/standardstatementincome/**", "/base/**", "/statistics/**")
                 .addPathPatterns("/dashboard/**")
                 .addPathPatterns("/orgs/**")
                 .addPathPatterns("/users/**")
@@ -90,6 +93,7 @@ public class JinBooksMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/localization/**")
 
                 .addPathPatterns("/filestorage/upload/")
+                .addPathPatterns("/filestorage/image/delete")
 
                 .addPathPatterns("/logout")
                 .addPathPatterns("/logout/**")

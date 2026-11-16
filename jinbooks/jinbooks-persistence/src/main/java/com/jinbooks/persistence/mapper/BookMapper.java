@@ -26,6 +26,7 @@ import com.jinbooks.entity.book.vo.BookVo;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
@@ -37,6 +38,9 @@ import java.util.List;
 
 @Mapper
 public interface BookMapper extends BaseMapper<Book> {
+    @Select("SELECT * FROM jbx_book WHERE id = #{id} AND deleted = 'n' FOR UPDATE")
+    Book selectForUpdate(@Param("id") String id);
+
     Page<Book> pageList(Page page, @Param("Dto") BookPageDto dto);
 
     List<BookVo> listBooks(@Param("userId") String userId);

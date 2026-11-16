@@ -77,7 +77,8 @@ public class AssistAccController {
     }
 
     @DeleteMapping("/delete")
-    public Message<String> delete(@RequestBody ListIdsDto dto) {
+    public Message<String> delete(@RequestBody ListIdsDto dto, @CurrentUser UserInfo userInfo) {
+        dto.setBookId(userInfo.getBookId());
         return assistAccService.delete(dto);
     }
 

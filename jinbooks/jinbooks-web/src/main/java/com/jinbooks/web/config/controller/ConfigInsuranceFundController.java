@@ -47,7 +47,11 @@ public class ConfigInsuranceFundController {
     @GetMapping("/getCurrent")
     public Message<ConfigInsuranceFund> getCurrent(@CurrentUser UserInfo currentUser){
         String bookId = currentUser.getBookId();
-        return configInsuranceFundService.getCurrent(bookId);
+        Message<ConfigInsuranceFund> result = configInsuranceFundService.getCurrent(bookId);
+        if (result.getCode() == Message.FAIL && "请添加配置".equals(result.getMessage())) {
+            return Message.ok(null);
+        }
+        return result;
     }
 
     @PutMapping("/updateCurrent")

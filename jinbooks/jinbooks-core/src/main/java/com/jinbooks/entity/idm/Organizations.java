@@ -29,6 +29,8 @@ import com.baomidou.mybatisplus.annotation.*;
 import com.jinbooks.entity.BaseEntity;
 import com.jinbooks.validate.AddGroup;
 import com.jinbooks.validate.EditGroup;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
@@ -88,6 +90,7 @@ public class Organizations extends BaseEntity implements Serializable {
     //数据库关键字，解决人大金仓数据库适配修改2023-1-30-shibanglin
 //    @Column(name = "JBX_organizations.level")
 
+    @JsonSetter(nulls = Nulls.SKIP)
     private int level;
 
     private String hasChild;

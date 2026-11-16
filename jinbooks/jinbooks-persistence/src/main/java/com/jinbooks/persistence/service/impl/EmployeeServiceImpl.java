@@ -29,6 +29,9 @@ import com.jinbooks.entity.hr.dto.EmployeeChangeDto;
 import com.jinbooks.entity.hr.dto.EmployeePageDto;
 import com.jinbooks.persistence.mapper.EmployeeMapper;
 import com.jinbooks.persistence.service.EmployeeService;
+import com.jinbooks.persistence.mapper.BookMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.jinbooks.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +54,10 @@ public class EmployeeServiceImpl extends ServiceImpl<EmployeeMapper, Employee> i
 
     @Autowired
     IdentifierGenerator identifierGenerator;
+    @Autowired
+    BookMapper bookMapper;
+    @Autowired
+    com.jinbooks.persistence.mapper.OrganizationsMapper organizationsMapper;
 
     /**
      * 分页查询
@@ -72,6 +79,7 @@ public class EmployeeServiceImpl extends ServiceImpl<EmployeeMapper, Employee> i
     @Override
     @Transactional
     public Message<String> save(EmployeeChangeDto dto) {
+        validateEmployeeNumber(dto);
         Employee employee = Employee.builder().build();
         BeanUtil.copyProperties(dto, employee);
         String currentId = identifierGenerator.nextId(employee).toString();
@@ -89,6 +97,7 @@ public class EmployeeServiceImpl extends ServiceImpl<EmployeeMapper, Employee> i
     @Override
     @Transactional
     public Message<String> update(EmployeeChangeDto dto) {
+        validateEmployeeNumber(dto);
         Employee employee = Employee.builder().build();
         BeanUtil.copyProperties(dto, employee);
         String currentId = dto.getId();
@@ -96,6 +105,27 @@ public class EmployeeServiceImpl extends ServiceImpl<EmployeeMapper, Employee> i
         return update ? new Message<>(Message.SUCCESS, "修改成功", currentId) : new Message<>(Message.FAIL, "修改失败");
     }
 
+
+    private void validateEmployeeNumber(EmployeeChangeDto dto) {
+        if (bookMapper.selectForUpdate(dto.getBookId()) == null) throw new BusinessException(400, "账套不存在");
+        if (dto.getId() != null) {
+            Employee existing = jbxEmployeeMapper.selectById(dto.getId());
+            if (existing == null || !dto.getBookId().equals(existing.getBookId())) {
+                throw new BusinessException(403, "员工不存在或不属于当前账套");
+            }
+        }
+        if (org.apache.commons.lang3.StringUtils.isNotBlank(dto.getDepartmentId())) {
+            var department = organizationsMapper.selectById(dto.getDepartmentId());
+            if (department == null || !dto.getBookId().equals(department.getBookId())) {
+                throw new BusinessException(400, "所属部门不存在或不属于当前账套");
+            }
+        }
+        if (jbxEmployeeMapper.exists(new LambdaQueryWrapper<Employee>()
+                .eq(Employee::getBookId, dto.getBookId()).eq(Employee::getEmployeeNumber, dto.getEmployeeNumber())
+                .ne(dto.getId() != null, Employee::getId, dto.getId()))) {
+            throw new BusinessException(400, "本账套工号重复");
+        }
+    }
 
     /**
      * 根据ID删除

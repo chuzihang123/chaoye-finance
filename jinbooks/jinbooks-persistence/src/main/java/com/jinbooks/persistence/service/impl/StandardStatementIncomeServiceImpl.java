@@ -96,6 +96,13 @@ public class StandardStatementIncomeServiceImpl implements StandardStatementInco
     @Override
     @Transactional
     public Message<StandardStatementIncome> save(StandardStatementIncome dto) {
+        if (!"+".equals(dto.getSymbol()) && !"-".equals(dto.getSymbol())) {
+            throw new com.jinbooks.exception.BusinessException(400, "计算符号只允许+或-");
+        }
+        if (dto.getRules() != null && dto.getRules().stream().anyMatch(rule ->
+                rule == null || (!"+".equals(rule.getSymbol()) && !"-".equals(rule.getSymbol())))) {
+            throw new com.jinbooks.exception.BusinessException(400, "取数规则的计算符号只允许+或-");
+        }
         updateSortIndex(dto, StatementSymbolEnum.PLUS);
         if (StringUtils.isBlank(dto.getId())) {
             String id = identifierGenerator.nextId(dto).toString();

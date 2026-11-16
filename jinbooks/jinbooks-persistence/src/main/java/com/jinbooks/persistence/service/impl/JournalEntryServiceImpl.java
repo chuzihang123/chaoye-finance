@@ -69,6 +69,8 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
 	
 	@Autowired
     VoucherService voucherService;
+    @Autowired
+    com.jinbooks.persistence.mapper.VoucherMapper voucherMapper;
 	
 	@Autowired
 	SettlementService settlementService;
@@ -83,6 +85,8 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
     @Override
     @Transactional
     public Message<String> save(JournalEntryDto dto) {
+        if (bookMapper.selectForUpdate(dto.getBookId()) == null) throw new BusinessException(400, "账套不存在");
+        validateReferences(dto);
 
     	JournalEntry journalEntry = new JournalEntry();
         BeanUtil.copyProperties(dto, journalEntry);
@@ -129,8 +133,13 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
     @Override
     @Transactional
     public Message<String> update(JournalEntryDto dto) {
+        if (bookMapper.selectForUpdate(dto.getBookId()) == null) throw new BusinessException(400, "账套不存在");
         String id = dto.getId();
         JournalEntry oldJournalEntry = super.getById(id);
+        if (oldJournalEntry == null || !dto.getBookId().equals(oldJournalEntry.getBookId())) {
+            throw new BusinessException(403, "流水不存在或不属于当前账套");
+        }
+        validateReferences(dto);
         //判断账期是否结账
         String period = DateUtils.format(oldJournalEntry.getTradeDate(),DateUtils.FORMAT_DATE_YYYY_MM);
         Message<String> check = settlementService.check(dto.getBookId(), period);
@@ -182,9 +191,23 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
         return result ? new Message<>(Message.SUCCESS, "修改成功") : new Message<>(Message.FAIL, "修改失败");
     }
 
+    private void validateReferences(JournalEntryDto dto) {
+        JournalAccount account = journalAccountService.getById(dto.getAccId());
+        if (account == null || !dto.getBookId().equals(account.getBookId())) {
+            throw new BusinessException(403, "账户不存在或不属于当前账套");
+        }
+        if (StringUtils.isNotBlank(dto.getVoucherId())) {
+            var voucher = voucherMapper.selectById(dto.getVoucherId());
+            if (voucher == null || !dto.getBookId().equals(voucher.getBookId())) {
+                throw new BusinessException(403, "关联凭证不存在或不属于当前账套");
+            }
+        }
+    }
+
     @Override
     @Transactional
     public Message<String> delete(ListIdsDto dto) {
+        if (bookMapper.selectForUpdate(dto.getBookId()) == null) throw new BusinessException(400, "账套不存在");
         List<String> listIds = dto.getListIds();
         List<String> removeableListIds = new ArrayList<>();
         List<String> voucherIds = new ArrayList<>();
@@ -192,6 +215,9 @@ public class JournalEntryServiceImpl extends ServiceImpl<JournalEntryMapper, Jou
         boolean result = false;
         for(String id : listIds) {
 	        JournalEntry journalEntry = super.getById(id);
+            if (journalEntry != null && !dto.getBookId().equals(journalEntry.getBookId())) {
+                throw new BusinessException(403, "流水不存在或不属于当前账套");
+            }
 	        if(journalEntry == null) {
 	        	continue;
 	        }

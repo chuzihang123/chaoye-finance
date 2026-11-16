@@ -20,6 +20,8 @@ package com.jinbooks.web.book.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jinbooks.entity.Message;
+import com.jinbooks.authn.annotation.CurrentUser;
+import com.jinbooks.entity.idm.UserInfo;
 import com.jinbooks.entity.book.BookSubject;
 import com.jinbooks.entity.book.dto.BookSubjectTreeDto;
 import com.jinbooks.entity.book.dto.SubjectChangeDto;
@@ -56,13 +58,15 @@ public class BookSubjectController {
     BookSubjectService bookSubjectService;
 
     @GetMapping(value = {"/tree/{bookId}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public Message<List<MapTree<String>>> treeByBookId(@PathVariable(name = "bookId") String bookId) {
+    public Message<List<MapTree<String>>> treeByBookId(@PathVariable(name = "bookId") String bookId, @CurrentUser UserInfo user) {
+        if (!user.getBookId().equals(bookId)) return new Message<>(403, "没有当前账套以外科目的访问权限");
         List<MapTree<String>> tree = bookSubjectService.tree(bookId);
         return new Message<>(Message.SUCCESS, tree);
     }
 
     @GetMapping(value = {"/fetch"})
-    public Message<Page<BookSubject>> fetch(@ParameterObject SubjectPageDto dto) {
+    public Message<Page<BookSubject>> fetch(@ParameterObject SubjectPageDto dto, @CurrentUser UserInfo user) {
+        dto.setBookId(user.getBookId());
 
         logger.debug("fetchBySet {}", dto);
 
@@ -70,28 +74,33 @@ public class BookSubjectController {
     }
 
     @PostMapping("/save")
-    public Message<String> save(@Validated(value = AddGroup.class) @RequestBody SubjectChangeDto dto) {
+    public Message<String> save(@Validated(value = AddGroup.class) @RequestBody SubjectChangeDto dto, @CurrentUser UserInfo user) {
+        dto.setBookId(user.getBookId());
         return bookSubjectService.save(dto);
     }
 
     @GetMapping("/get")
-    public Message<BookSubject> getById(@ParameterObject BookQueryDto dto) {
+    public Message<BookSubject> getById(@ParameterObject BookQueryDto dto, @CurrentUser UserInfo user) {
+        dto.setBookId(user.getBookId());
         return new Message<>(Message.SUCCESS, bookSubjectService.getById(dto.getBookId(), dto.getId()));
     }
 
     @PutMapping("/update")
-    public Message<String> update(@Validated(value = EditGroup.class) @RequestBody SubjectChangeDto dto) {
+    public Message<String> update(@Validated(value = EditGroup.class) @RequestBody SubjectChangeDto dto, @CurrentUser UserInfo user) {
+        dto.setBookId(user.getBookId());
         return bookSubjectService.update(dto);
     }
 
 
     @DeleteMapping("/delete")
-    public Message<String> delete(@Validated @RequestBody ListIdsDto dto) {
+    public Message<String> delete(@Validated @RequestBody ListIdsDto dto, @CurrentUser UserInfo user) {
+        dto.setBookId(user.getBookId());
         return bookSubjectService.delete(dto);
     }
 
     @GetMapping(value = {"/reorgDisplayName"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public Message<String> reorgDisplayName(@ParameterObject BookSubjectTreeDto dto) {
+    public Message<String> reorgDisplayName(@ParameterObject BookSubjectTreeDto dto, @CurrentUser UserInfo user) {
+        dto.setBookId(user.getBookId());
         return bookSubjectService.reorgDisplayName(dto.getBookId());
     }
 }

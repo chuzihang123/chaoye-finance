@@ -19,6 +19,7 @@
 package com.jinbooks.persistence.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -30,11 +31,14 @@ import com.jinbooks.entity.statement.StatementSubjectBalance;
 import com.jinbooks.entity.statement.dto.StatementParamsDto;
 import com.jinbooks.entity.voucher.dto.VoucherSuccessiveDto;
 import com.jinbooks.entity.voucher.vo.VoucherItemVo;
+import com.jinbooks.entity.voucher.Voucher;
+import com.jinbooks.enums.VoucherStatusEnum;
 import com.jinbooks.enums.StatementPeriodTypeEnum;
 import com.jinbooks.persistence.mapper.BookMapper;
 import com.jinbooks.persistence.mapper.SettlementMapper;
 import com.jinbooks.persistence.mapper.StatementSubjectBalanceMapper;
 import com.jinbooks.persistence.mapper.VoucherItemMapper;
+import com.jinbooks.persistence.mapper.VoucherMapper;
 import com.jinbooks.persistence.service.*;
 import lombok.extern.slf4j.Slf4j;
 
@@ -76,6 +80,9 @@ public class SettlementServiceImpl extends ServiceImpl<SettlementMapper, Settlem
 
     @Autowired
     VoucherItemMapper voucherItemMapper;
+
+    @Autowired
+    VoucherMapper voucherMapper;
 
     @Autowired
     StatementIncomeService statementIncomeService;
@@ -153,9 +160,25 @@ public class SettlementServiceImpl extends ServiceImpl<SettlementMapper, Settlem
 	@Override
 	@Transactional
 	public Message<Settlement> checkout(Settlement dto) {
+
+        if (bookMapper.selectForUpdate(dto.getBookId()) == null) {
+            return Message.failed("账套不存在");
+        }
 		//结账逻辑检测
 		String currentTerm = configSysService.getCurrentTerm(dto.getBookId());
+        String requestedTerm = dto.getCurrentTerm() != null ? dto.getCurrentTerm() : dto.getYearPeriod();
+        if (requestedTerm == null || requestedTerm.isBlank()) {
+            return Message.failed("请提供待结账期间currentTerm，并先完成结账检查");
+        }
+        if (!currentTerm.equals(requestedTerm)) {
+            return Message.failed("账期已变更，请刷新后重新检查");
+        }
+        Message<List<SettlementVerifyVo>> verification = verify(dto.getBookId());
+        if (verification.getCode() != Message.SUCCESS && verification.getCode() != Message.WARNING) {
+            return Message.failed(verification.getMessage());
+        }
 		YearMonth currentTermYearMonth = YearMonth.parse(currentTerm);
+        dto.setYear(currentTermYearMonth.getYear());
 		LambdaQueryWrapper<Settlement> wrapper = new LambdaQueryWrapper<>();
 		wrapper.eq(Settlement::getBookId, dto.getBookId());
 		wrapper.eq(Settlement::getYear, dto.getYear());
@@ -306,12 +329,31 @@ public class SettlementServiceImpl extends ServiceImpl<SettlementMapper, Settlem
         	debitAmount  = debitAmount.add(voucherItemVo.getDebitAmount()== null?BigDecimal.ZERO:voucherItemVo.getDebitAmount());
         	creditAmount = creditAmount.add(voucherItemVo.getCreditAmount()== null?BigDecimal.ZERO:voucherItemVo.getCreditAmount());
         }
-        if(creditAmount.equals(debitAmount)) {
+		if(creditAmount.compareTo(debitAmount) == 0) {
         	settlementVerifyList.add(new SettlementVerifyVo(checkIndex,"凭证借贷方余额的检查",true,false));
         }else {
         	verify = false;
         	settlementVerifyList.add(new SettlementVerifyVo(checkIndex,"凭证借贷方余额的检查",false,false));
         }
+
+        checkIndex++;
+        Long pending = voucherMapper.selectCount(Wrappers.<Voucher>lambdaQuery()
+                .eq(Voucher::getBookId, bookId)
+                .likeRight(Voucher::getVoucherDate, currentTerm)
+                .in(Voucher::getStatus, VoucherStatusEnum.DRAFT.getValue(), VoucherStatusEnum.UNDER_REVIEW.getValue()));
+        boolean allCompleted = pending == 0;
+        settlementVerifyList.add(new SettlementVerifyVo(checkIndex, "暂存及审核中凭证检查", allCompleted, false));
+        verify = verify && allCompleted;
+
+        checkIndex++;
+        Long unbalanced = voucherMapper.selectCount(Wrappers.<Voucher>lambdaQuery()
+                .eq(Voucher::getBookId, bookId)
+                .likeRight(Voucher::getVoucherDate, currentTerm)
+                .eq(Voucher::getStatus, VoucherStatusEnum.COMPLETED.getValue())
+                .apply("COALESCE(debit_amount, 0) <> COALESCE(credit_amount, 0)"));
+        boolean vouchersBalanced = unbalanced == 0;
+        settlementVerifyList.add(new SettlementVerifyVo(checkIndex, "逐张凭证借贷平衡检查", vouchersBalanced, false));
+        verify = verify && vouchersBalanced;
 
 		if(verify) {
 			if(warning) {

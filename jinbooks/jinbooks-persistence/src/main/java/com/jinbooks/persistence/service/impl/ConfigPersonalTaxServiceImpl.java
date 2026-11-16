@@ -56,8 +56,14 @@ public class ConfigPersonalTaxServiceImpl extends ServiceImpl<ConfigPersonalTaxM
 
 
     private void checkNumberInterval(ConfigPersonalTaxChangeDto dto) {
+        if (dto.getTaxRate() == null || dto.getTaxRate() < 0 || dto.getTaxRate() > 100) {
+            throw new BusinessException(400, "税率必须在0到100之间");
+        }
         Integer maxNum = dto.getMaxNum();
         Integer minNum = dto.getMinNum();
+        if (minNum == null || minNum < 0) {
+            throw new BusinessException(400, "所得额下限不能为空且不能为负数");
+        }
         if (Objects.nonNull(maxNum) && minNum >= maxNum) {
             throw new BusinessException(50001, "所得额区间不符合规范");
         }
@@ -70,10 +76,9 @@ public class ConfigPersonalTaxServiceImpl extends ServiceImpl<ConfigPersonalTaxM
     @Override
     @Transactional
     public Message<String> save(ConfigPersonalTaxChangeDto dto) {
+        checkNumberInterval(dto);
         //校验等级是否重复
         checkLevel(dto, false);
-        //校验所得额区间
-        checkNumberInterval(dto);
         //设置速算扣除数
         ConfigPersonalTax configJbxTax = BeanUtil.copyProperties(dto, ConfigPersonalTax.class);
         configJbxTax.setCalculationDeduction(calculateQuickDeduction(dto));

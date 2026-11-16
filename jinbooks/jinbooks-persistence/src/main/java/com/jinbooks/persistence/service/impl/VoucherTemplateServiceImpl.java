@@ -80,6 +80,7 @@ public class VoucherTemplateServiceImpl extends ServiceImpl<VoucherTemplateMappe
     @Override
     @Transactional
     public Message<String> save(VoucherTemplateChangeDto dto) {
+        validateTemplate(dto);
     	log.debug("dto {}",dto);
     	VoucherTemplate voucherTemplate = voucherTemplateMapper.selectById(dto.getId());
     	if(voucherTemplate == null) {
@@ -99,6 +100,7 @@ public class VoucherTemplateServiceImpl extends ServiceImpl<VoucherTemplateMappe
     @Override
     @Transactional
     public Message<String> update(VoucherTemplateChangeDto dto) {
+        validateTemplate(dto);
     	saveItems(dto);
         //更新
     	VoucherTemplate voucherTemplate = new VoucherTemplate();
@@ -175,8 +177,33 @@ public class VoucherTemplateServiceImpl extends ServiceImpl<VoucherTemplateMappe
         return result ? new Message<>(Message.SUCCESS, "删除成功") : new Message<>(Message.FAIL, "删除失败");
     }
 
-	@Override
-	public Message<VoucherTemplate> get(String id) {
+    private void validateTemplate(VoucherTemplateChangeDto dto) {
+        if (org.apache.commons.lang3.StringUtils.isBlank(dto.getName())
+                || org.apache.commons.lang3.StringUtils.isBlank(dto.getRelatedId())
+                || org.apache.commons.lang3.StringUtils.isBlank(dto.getCode())
+                || org.apache.commons.lang3.StringUtils.isBlank(dto.getWordHead())
+                || dto.getItems() == null || dto.getItems().isEmpty()) {
+            throw new com.jinbooks.exception.BusinessException(400, "模板名称、编码、关联对象、字头及分录不能为空");
+        }
+        if (dto.getVoucherDate() == null || dto.getVoucherDate() < 0 || dto.getVoucherDate() > 31) {
+            throw new com.jinbooks.exception.BusinessException(400, "模板日期必须在0到31之间");
+        }
+        if (dto.getItems().stream().anyMatch(item -> item == null
+                || org.apache.commons.lang3.StringUtils.isBlank(item.getSubjectCode())
+                || (!Integer.valueOf(1).equals(item.getDirection()) && !Integer.valueOf(2).equals(item.getDirection())))) {
+            throw new com.jinbooks.exception.BusinessException(400, "模板分录科目不能为空且方向必须是借方或贷方");
+        }
+        if (voucherTemplateMapper.exists(new LambdaQueryWrapper<VoucherTemplate>()
+                .eq(VoucherTemplate::getRelatedId, dto.getRelatedId())
+                .eq(VoucherTemplate::getCategory, dto.getCategory())
+                .eq(VoucherTemplate::getCode, dto.getCode())
+                .ne(org.apache.commons.lang3.StringUtils.isNotBlank(dto.getId()), VoucherTemplate::getId, dto.getId()))) {
+            throw new com.jinbooks.exception.BusinessException(400, "同类模板编码重复");
+        }
+    }
+
+    @Override
+    public Message<VoucherTemplate> get(String id) {
     	 VoucherTemplate voucherTemplate = voucherTemplateMapper.selectById(id);
     	 
     	 LambdaQueryWrapper<VoucherTemplateItem> lqw = Wrappers.lambdaQuery();

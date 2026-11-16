@@ -91,7 +91,6 @@ import {useI18n} from "vue-i18n";
 import {deleteBatch, listGroup} from "@/api/system/group.js";
 import editForm from "./group/edit.vue";
 import {getTree} from "@/api/system/dept";
-import {handleTree} from "@/utils/Jinbooks";
 import {set2String} from "@/utils"
 import memberComponent from './group/members.vue'
 import {useRouter} from "vue-router";
@@ -185,15 +184,7 @@ function handleSelectionChange(selection: any): any {
 /** 获取组织树 */
 function getOrgTree(): any {
   getTree().then((response: any) => {
-    response.data.nodes.forEach((node: any) => {
-      if (node.key === response.data.rootNode.key) {
-        node.parentKey = null;
-      }
-    });
-    deptOptions.value = handleTree(response.data.nodes, 'key', 'parentKey', 'children')
-    deptOptions.value = deptOptions.value.filter((t: any) => {
-      return response.data.rootNode.key == t.key
-    })
+    deptOptions.value = response.data;
   });
 }
 

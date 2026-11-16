@@ -98,6 +98,7 @@ public class JournalAccountController {
 
     @DeleteMapping("/delete")
     public Message<String> delete(@Validated @ParameterObject ListIdsDto dto) {
+        dto.setBookId(AuthorizationUtils.getUserInfo().getBookId());
         return journalAccountService.delete(dto);
     }
 }

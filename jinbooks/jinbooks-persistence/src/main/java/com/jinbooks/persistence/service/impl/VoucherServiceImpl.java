@@ -41,6 +41,7 @@ import com.jinbooks.entity.voucher.dto.VoucherSuccessiveDto;
 import com.jinbooks.entity.voucher.vo.VoucherVo;
 import com.jinbooks.enums.*;
 import com.jinbooks.exception.ServiceException;
+import com.jinbooks.exception.BusinessException;
 import com.jinbooks.persistence.mapper.*;
 import com.jinbooks.persistence.service.ConfigSysService;
 import com.jinbooks.persistence.service.StatementSubjectBalanceService;
@@ -58,7 +59,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.ResourceUtils;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -77,6 +77,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Service
 public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> implements VoucherService {
+    @org.springframework.beans.factory.annotation.Autowired
+    AssistAccMapper assistAccMapper;
 
     private final IdentifierGenerator identifierGenerator;
     private final VoucherItemMapper voucherItemMapper;
@@ -324,10 +326,14 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     @Override
     @Transactional
     public Message<String> submit(VoucherChangeDto dto, boolean update) {
+        lockBook(dto.getBookId());
         if (StringUtils.isNotBlank(dto.getId())) {
             Voucher voucher = baseMapper.selectById(dto.getId());
             if (voucher == null) {
                 return Message.failed("凭证不存在");
+            }
+            if (!dto.getBookId().equals(voucher.getBookId())) {
+                return Message.failed("凭证不存在或无权操作");
             }
             if (!VoucherStatusEnum.DRAFT.getValue().equals(voucher.getStatus())) {
                 return Message.failed("凭证已提交，不允许修改");
@@ -354,6 +360,9 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         if (!currentTerm.equals(voucherDate)) {
             return Message.failed("已暂存，非当前期不允许提交凭证");
         }
+
+        validateSubmittedItems(dto.getItems());
+        validateAuxiliary(dto, true);
 
         Book book = bookMapper.selectById(dto.getBookId());
         if (VoucherReviewedOnOffEnum.ON.getCode().equals(book.getVoucherReviewed())) {
@@ -431,6 +440,13 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     @Override
     @Transactional
     public Message<String> save(VoucherChangeDto dto) {
+        lockBook(dto.getBookId());
+        validateAuxiliary(dto, VoucherStatusEnum.COMPLETED.getValue().equals(dto.getStatus())
+                || VoucherStatusEnum.UNDER_REVIEW.getValue().equals(dto.getStatus()));
+        if (VoucherStatusEnum.COMPLETED.getValue().equals(dto.getStatus())
+                || VoucherStatusEnum.UNDER_REVIEW.getValue().equals(dto.getStatus())) {
+            validateSubmittedItems(dto.getItems());
+        }
         Voucher voucher = Voucher.builder().build();
         BeanUtil.copyProperties(dto, voucher);
         String currentId = identifierGenerator.nextId(voucher).toString();
@@ -497,12 +513,22 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     @Override
     @Transactional
     public Message<String> update(VoucherChangeDto dto) {
+        lockBook(dto.getBookId());
+        validateAuxiliary(dto, VoucherStatusEnum.COMPLETED.getValue().equals(dto.getStatus())
+                || VoucherStatusEnum.UNDER_REVIEW.getValue().equals(dto.getStatus()));
+        if (VoucherStatusEnum.COMPLETED.getValue().equals(dto.getStatus())
+                || VoucherStatusEnum.UNDER_REVIEW.getValue().equals(dto.getStatus())) {
+            validateSubmittedItems(dto.getItems());
+        }
         String currentId = dto.getId();
 //        dto.setWord(null);
 //        dto.setWordNum(null);
 //        dto.setWordHead(null);
 //        dto.setVoucherYear(null);
         Voucher currentVoucher = baseMapper.selectById(currentId);
+        if (currentVoucher == null || !dto.getBookId().equals(currentVoucher.getBookId())) {
+            return Message.failed("凭证不存在或无权操作");
+        }
 
         Voucher booksVoucher = Voucher.builder().build();
         BeanUtil.copyProperties(dto, booksVoucher);
@@ -583,7 +609,9 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     @Override
     @Transactional
     public Message<Void> audit(List<String> ids, UserInfo userInfo) {
-        List<Voucher> vouchers = baseMapper.selectByIds(ids);
+        lockBook(userInfo.getBookId());
+        List<Voucher> vouchers = baseMapper.selectList(Wrappers.<Voucher>lambdaQuery()
+                .eq(Voucher::getBookId, userInfo.getBookId()).in(Voucher::getId, ids));
         List<Voucher> auditVouchers = vouchers.stream()
                 .filter(item -> VoucherStatusEnum.UNDER_REVIEW.getValue().equals(item.getStatus()))
                 .toList();
@@ -605,6 +633,8 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
                 items.add(itemChangeDto);
             }
             voucherChangeDto.setItems(items);
+            validateSubmittedItems(items);
+            validateAuxiliary(voucherChangeDto, true);
             // 更新余额和数据
             BooksVoucherItemProvider booksVoucherItemProvider = updateItemsAndCount(auditVoucher, voucherChangeDto, auditVoucher.getId(), true);
             List<VoucherItem> insertItems = booksVoucherItemProvider.getItems();
@@ -698,13 +728,7 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     public void export(VoucherPageDto dto, HttpServletResponse response) throws IOException {
         List<VoucherVo> data = pageList(dto).getData().getRecords();
 
-        String templatePath = ResourceUtils
-                .getURL("classpath:static/export-template/template-voucher.xlsx")
-                .getPath();
-        // 注意：Windows下getPath()前会带'/'，可做处理
-        if (templatePath.startsWith("/")) {
-            templatePath = templatePath.substring(1);
-        }
+        String templatePath = "classpath:static/export-template/template-voucher.xlsx";
         ExcelParams<List<VoucherVo>> paramsObj = ExcelParams.<List<VoucherVo>>builder()
                 .httpResponse(response)
                 .dataModel(data)
@@ -731,6 +755,30 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         if (ids == null || ids.isEmpty()) {
             return new Message<>(Message.SUCCESS);
         }
+        lockBook(bookId);
+        List<Voucher> selected = baseMapper.selectList(Wrappers.<Voucher>lambdaQuery()
+                .eq(Voucher::getBookId, bookId).in(Voucher::getId, ids));
+        if (selected.size() != new HashSet<>(ids).size()) {
+            return Message.failed("凭证不存在或无权操作");
+        }
+        Message<String> periodCheck = checkDeletionPeriods(selected, bookId);
+        if (periodCheck.getCode() != Message.SUCCESS) {
+            return periodCheck;
+        }
+
+        // 删除前保留原分录，删除后再据此回退余额及科目引用标记。
+        List<BooksVoucherItemProvider> deletedBalances = new ArrayList<>();
+        for (Voucher voucher : selected) {
+            if (VoucherStatusEnum.COMPLETED.getValue().equals(voucher.getStatus())
+                    && YesNoEnum.n.name().equals(voucher.getCarryForward())) {
+                List<VoucherItem> items = voucherItemMapper.selectList(Wrappers.<VoucherItem>lambdaQuery()
+                        .eq(VoucherItem::getBookId, bookId).eq(VoucherItem::getVoucherId, voucher.getId()));
+                List<VoucherAuxiliary> auxiliaries = voucherItemAuxiliaryMapper.selectList(Wrappers.<VoucherAuxiliary>lambdaQuery()
+                        .eq(VoucherAuxiliary::getBookId, bookId).eq(VoucherAuxiliary::getVoucherId, voucher.getId()));
+                deletedBalances.add(BooksVoucherItemProvider.builder().items(items).auxiliary(auxiliaries).build());
+            }
+        }
+
         // 删除之前先取消
         Message<Integer> cancelRes = cancelByIds(ids, bookId);
         if (cancelRes.getCode() != Message.SUCCESS) {
@@ -755,27 +803,8 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         voucherItemMapper.delete(new LambdaUpdateWrapper<VoucherItem>().in(VoucherItem::getVoucherId, ids));
         voucherItemAuxiliaryMapper.delete(new LambdaQueryWrapper<VoucherAuxiliary>().in(VoucherAuxiliary::getVoucherId, ids));
 
-        // 还原科目余额
-        LambdaQueryWrapper<Voucher> lqw = Wrappers.lambdaQuery();
-        lqw.in(Voucher::getId, ids);
-        lqw.eq(Voucher::getBookId, bookId);
-        lqw.eq(Voucher::getStatus, VoucherStatusEnum.COMPLETED.getValue());
-        List<Voucher> booksVouchers = baseMapper.selectList(lqw);
-        if (!booksVouchers.isEmpty()) {
-            booksVouchers.forEach(t -> {
-                VoucherVo booksVoucher = queryById(t.getId()).getData();
-                LambdaQueryWrapper<VoucherAuxiliary> lqwAux = Wrappers.lambdaQuery();
-                lqwAux.eq(VoucherAuxiliary::getVoucherId, booksVoucher.getId());
-                List<VoucherAuxiliary> insertAuxiliary = voucherItemAuxiliaryMapper.selectList(lqwAux);
-                List<VoucherItem> items = booksVoucher.getItems().stream().map(itemVo -> {
-                    VoucherItem build = VoucherItem.builder().build();
-                    BeanUtil.copyProperties(itemVo, build);
-                    return build;
-                }).toList();
-                if (YesNoEnum.n.name().equals(booksVoucher.getCarryForward())) {
-                    updateSubjectBalance(items, insertAuxiliary, true);
-                }
-            });
+        for (BooksVoucherItemProvider deletedBalance : deletedBalances) {
+            updateSubjectBalance(deletedBalance.getItems(), deletedBalance.getAuxiliary(), true);
         }
 
         int update = baseMapper.delete(new LambdaUpdateWrapper<Voucher>().in(Voucher::getId, ids));
@@ -805,23 +834,9 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         if (vouchers.size() != ids.size()) {
             return new Message<>(Message.FAIL, "凭证不存在或无权操作");
         }
-        String currentTerm = configSysService.getCurrentTerm(bookId);
-        YearMonth currentYearMonth = YearMonth.parse(currentTerm);
-        for (Voucher voucher : vouchers) {
-            if (voucher.getVoucherYear() == null || voucher.getVoucherMonth() == null) {
-                continue;
-            }
-            String period = String.format("%d-%02d", voucher.getVoucherYear(), voucher.getVoucherMonth());
-            if (YearMonth.parse(period).isBefore(currentYearMonth)) {
-                return new Message<>(Message.FAIL, "凭证[" + voucher.getWord() + "]所在账期[" + period
-                        + "]早于当前账期[" + currentTerm + "]，只能删除当前及以后账期的凭证");
-            }
-            if (settlementMapper.selectCount(Wrappers.<Settlement>lambdaQuery()
-                    .eq(Settlement::getBookId, bookId)
-                    .eq(Settlement::getYear, voucher.getVoucherYear())
-                    .eq(Settlement::getYearPeriod, period)) > 0) {
-                return new Message<>(Message.FAIL, "凭证[" + voucher.getWord() + "]所在账期[" + period + "]已结账，不允许删除");
-            }
+        Message<String> periodCheck = checkDeletionPeriods(vouchers, bookId);
+        if (periodCheck.getCode() != Message.SUCCESS) {
+            return periodCheck;
         }
         if (journalEntryMapper.selectCount(Wrappers.<JournalEntry>lambdaQuery()
                 .eq(JournalEntry::getBookId, bookId)
@@ -842,6 +857,28 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         return new Message<>(Message.SUCCESS);
     }
 
+    private Message<String> checkDeletionPeriods(List<Voucher> vouchers, String bookId) {
+        String currentTerm = configSysService.getCurrentTerm(bookId);
+        YearMonth currentYearMonth = YearMonth.parse(currentTerm);
+        for (Voucher voucher : vouchers) {
+            if (voucher.getVoucherYear() == null || voucher.getVoucherMonth() == null) {
+                continue;
+            }
+            String period = String.format("%d-%02d", voucher.getVoucherYear(), voucher.getVoucherMonth());
+            if (YearMonth.parse(period).isBefore(currentYearMonth)) {
+                return new Message<>(Message.FAIL, "凭证[" + voucher.getWord() + "]所在账期[" + period
+                        + "]早于当前账期[" + currentTerm + "]，只能删除当前及以后账期的凭证");
+            }
+            if (settlementMapper.selectCount(Wrappers.<Settlement>lambdaQuery()
+                    .eq(Settlement::getBookId, bookId)
+                    .eq(Settlement::getYear, voucher.getVoucherYear())
+                    .eq(Settlement::getYearPeriod, period)) > 0) {
+                return new Message<>(Message.FAIL, "凭证[" + voucher.getWord() + "]所在账期[" + period + "]已结账，不允许删除");
+            }
+        }
+        return new Message<>(Message.SUCCESS);
+    }
+
     /**
      * 取消
      *
@@ -856,9 +893,11 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
             return new Message<>(Message.FAIL, "未选择数据对象");
         }
 
+        lockBook(bookId);
         // 先查询凭证状态
         LambdaQueryWrapper<Voucher> lqw = Wrappers.lambdaQuery();
         lqw.in(Voucher::getId, ids);
+        lqw.eq(Voucher::getBookId, bookId);
         lqw.eq(Voucher::getStatus, VoucherStatusEnum.UNDER_REVIEW.getValue());
         List<Voucher> booksVouchers = baseMapper.selectList(lqw);
 
@@ -866,8 +905,6 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
             booksVouchers.forEach(t -> t.setStatus(VoucherStatusEnum.CANCELLED.getValue()));
             baseMapper.updateBatchById(booksVouchers);
         }
-        voucherItemMapper.delete(new LambdaUpdateWrapper<VoucherItem>().in(VoucherItem::getVoucherId, ids));
-
         // 更新审批记录状态...
         return new Message<>(Message.SUCCESS, booksVouchers.size());
     }
@@ -924,7 +961,7 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
             BeanUtil.copyProperties(t, item);
 
             // 创建辅助核算数据
-            List<VoucherItemAuxiliaryDto> auxiliary = t.getAuxiliary();
+            List<VoucherItemAuxiliaryDto> auxiliary = t.getAuxiliary() == null ? Collections.emptyList() : t.getAuxiliary();
             auxiliary.stream().filter(auxiliaryDto -> !auxiliaryDto.getValue().isEmpty())
                     .forEach(auxiliaryDto -> auxiliaryDto.getValue()
                             .forEach(auxiliaryValue -> insertAuxiliary.add(VoucherAuxiliary.builder()
@@ -949,6 +986,79 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
                 .items(insertItems)
                 .auxiliary(insertAuxiliary)
                 .build();
+    }
+
+    private void lockBook(String bookId) {
+        if (bookMapper.selectForUpdate(bookId) == null) {
+            throw new BusinessException(Message.FAIL, "账套不存在");
+        }
+    }
+
+    private void validateSubmittedItems(List<VoucherItemChangeDto> items) {
+        if (items == null || items.isEmpty()) {
+            throw new BusinessException(Message.FAIL, "凭证明细不能为空");
+        }
+        BigDecimal debitTotal = BigDecimal.ZERO;
+        BigDecimal creditTotal = BigDecimal.ZERO;
+        for (VoucherItemChangeDto item : items) {
+            if (item == null) {
+                throw new BusinessException(Message.FAIL, "凭证分录不能为空");
+            }
+            BigDecimal debit = item.getDebitAmount() == null ? BigDecimal.ZERO : item.getDebitAmount();
+            BigDecimal credit = item.getCreditAmount() == null ? BigDecimal.ZERO : item.getCreditAmount();
+            if ((debit.signum() == 0) == (credit.signum() == 0)) {
+                throw new BusinessException(Message.FAIL, "每条分录必须且只能填写借方或贷方金额");
+            }
+            if (debit.stripTrailingZeros().scale() > 2 || credit.stripTrailingZeros().scale() > 2) {
+                throw new BusinessException(Message.FAIL, "凭证金额最多保留两位小数");
+            }
+            debitTotal = debitTotal.add(debit);
+            creditTotal = creditTotal.add(credit);
+        }
+        if (debitTotal.compareTo(creditTotal) != 0) {
+            throw new BusinessException(Message.FAIL, "凭证借贷不平衡，借方合计" + debitTotal.toPlainString()
+                    + "，贷方合计" + creditTotal.toPlainString());
+        }
+    }
+
+    private void validateAuxiliary(VoucherChangeDto dto, boolean required) {
+        if (dto.getItems() == null) return;
+        for (VoucherItemChangeDto item : dto.getItems()) {
+            BookSubject subject = bookSubjectService.getById(item.getSubjectId());
+            if (subject == null || !dto.getBookId().equals(subject.getBookId())) {
+                throw new BusinessException(Message.FAIL, "分录科目不存在或不属于当前账套");
+            }
+            List<VoucherItemAuxiliaryDto> selections = item.getAuxiliary() == null ? List.of() : item.getAuxiliary();
+            for (VoucherItemAuxiliaryDto selection : selections) {
+                if (selection == null || selection.getValue() == null) {
+                    throw new BusinessException(Message.FAIL, "辅助核算参数不完整");
+                }
+                for (var value : selection.getValue()) {
+                    var assist = value == null ? null : assistAccMapper.selectById(value.getValue());
+                    if (assist == null || !dto.getBookId().equals(assist.getBookId())
+                            || !Objects.equals(selection.getId(), assist.getAssistType())) {
+                        throw new BusinessException(Message.FAIL, "辅助项不存在或不属于当前账套及类型");
+                    }
+                }
+            }
+            if (required && StringUtils.isNotBlank(subject.getAuxiliary())) {
+                List<Map<String, Object>> definitions;
+                try {
+                    definitions = new com.fasterxml.jackson.databind.ObjectMapper().readValue(subject.getAuxiliary(),
+                            new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+                } catch (IOException invalidConfig) {
+                    throw new BusinessException(Message.FAIL, "科目辅助核算配置无法解析");
+                }
+                for (Map<String, Object> definition : definitions) {
+                    String type = String.valueOf(definition.get("value"));
+                    if (Boolean.TRUE.equals(definition.get("must")) && selections.stream().noneMatch(selection ->
+                            type.equals(selection.getId()) && !selection.getValue().isEmpty())) {
+                        throw new BusinessException(Message.FAIL, "科目[" + subject.getCode() + "]必须选择辅助核算["
+                                + definition.get("label") + "]");
+                    }
+                }
+            }
+        }
     }
 
     /**

@@ -39,6 +39,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.jinbooks.authn.annotation.CurrentUser;
 import com.jinbooks.crypto.Base64Utils;
@@ -64,12 +67,17 @@ public class FileStorageEndpoint {
 	@Autowired
 	FileStorageService fileUploadService;
 
- 	@RequestMapping(value={"/upload/"})
+    @PostMapping(value={"/upload/"}, consumes="multipart/form-data")
  	@ResponseBody
  	public Message<Object> upload( HttpServletRequest request,
  	                            HttpServletResponse response,
- 	                           @ModelAttribute FileStorage fileStorage,
+                               @RequestPart("uploadFile") MultipartFile uploadFile,
+                               @RequestParam(required=false) String category,
  	                           @CurrentUser UserInfo currentUser){
+        if (uploadFile.isEmpty()) throw new BusinessException(400, "上传文件不能为空");
+        FileStorage fileStorage = new FileStorage();
+        fileStorage.setUploadFile(uploadFile);
+        fileStorage.setCategory(category);
  		logger.debug("FileUpload");
  		fileStorage.setId(WebContext.genId());
  		fileStorage.setContentType(fileStorage.getUploadFile().getContentType());
@@ -85,7 +93,7 @@ public class FileStorageEndpoint {
 				fileUploadService.save(fileStorage);
 				logger.trace("FileUpload SUCCESS");
 			} catch (IOException e) {
-				logger.error("FileUpload IOException",e);
+				throw new BusinessException(400, "读取上传文件失败");
 			}
 		}
  		return new Message<>(Message.SUCCESS,(Object)fileStorage.getId());

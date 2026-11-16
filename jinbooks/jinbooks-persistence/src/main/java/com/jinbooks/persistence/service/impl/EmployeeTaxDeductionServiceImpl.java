@@ -22,7 +22,6 @@ import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.google.common.collect.Lists;
 import com.jinbooks.entity.ExcelImport;
 import com.jinbooks.entity.Message;
 import com.jinbooks.entity.dto.ListIdsDto;
@@ -32,25 +31,26 @@ import com.jinbooks.entity.hr.dto.EmployeeTaxDeductionPageDto;
 import com.jinbooks.entity.idm.UserInfo;
 import com.jinbooks.persistence.mapper.EmployeeTaxDeductionMapper;
 import com.jinbooks.persistence.service.EmployeeTaxDeductionService;
+import com.jinbooks.persistence.mapper.BookMapper;
+import com.jinbooks.exception.BusinessException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.commons.lang3.StringUtils;
 import com.jinbooks.util.ExcelUtils;
 
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 
 @Service
 public class EmployeeTaxDeductionServiceImpl extends ServiceImpl<EmployeeTaxDeductionMapper, EmployeeTaxDeduction> implements EmployeeTaxDeductionService {
-    private static final Logger logger = LoggerFactory.getLogger(EmployeeTaxDeductionServiceImpl.class);
+    @Autowired
+    BookMapper bookMapper;
 
     @Override
     public Message<Page<EmployeeTaxDeduction>> pageList(EmployeeTaxDeductionPageDto dto) {
@@ -95,47 +95,45 @@ public class EmployeeTaxDeductionServiceImpl extends ServiceImpl<EmployeeTaxDedu
     @Override
     @Transactional
     public void importFromExcel(ExcelImport excelImportFile, UserInfo currentUser) {
-        if (excelImportFile.isExcelNotEmpty()) {
-            try {
-                //删除历史数据
-                LambdaQueryWrapper<EmployeeTaxDeduction> wrapper = new LambdaQueryWrapper<>();
-                wrapper.isNotNull(EmployeeTaxDeduction::getIdCardNo);
-                this.remove(wrapper);
-
-                List<EmployeeTaxDeduction> dataList = Lists.newArrayList();
-                Workbook workbook = excelImportFile.biuldWorkbook();
-                int recordCount = 0;
-                int sheetSize = workbook.getNumberOfSheets();
-                for (int i = 0; i < sheetSize; i++) {
-                    //遍历sheet页
-                    Sheet sheet = workbook.getSheetAt(i);
-                    int rowSize = sheet.getLastRowNum() + 1;
-                    for (int j = 1; j < rowSize; j++) {     // 略过首行
-                        //遍历行
-                        Row row = sheet.getRow(j);
-                        if (row == null) {
-                            //略过首行
-                            //continue;
-                        } else {
-                            //其他行是数据行
-                            EmployeeTaxDeduction excelModel = buildFromSheetRow(row, currentUser);
-                            dataList.add(excelModel);
-                            recordCount++;
-                            logger.debug("record {} user {} account {}", recordCount, excelModel.getEmployeeName(), excelModel.getIdCardNo());
+        if (!excelImportFile.isExcelNotEmpty()) throw new BusinessException(400, "请选择扣除资料Excel文件");
+        Map<String, EmployeeTaxDeduction> rows = new LinkedHashMap<>();
+        try {
+            Workbook workbook = excelImportFile.biuldWorkbook();
+            for (int sheetIndex = 0; sheetIndex < workbook.getNumberOfSheets(); sheetIndex++) {
+                Sheet sheet = workbook.getSheetAt(sheetIndex);
+                for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                    Row row = sheet.getRow(rowIndex);
+                    if (row == null || (StringUtils.isBlank(ExcelUtils.getValue(row, 0))
+                            && StringUtils.isBlank(ExcelUtils.getValue(row, 1))
+                            && StringUtils.isBlank(ExcelUtils.getValue(row, 3)))) continue;
+                    try {
+                        EmployeeTaxDeduction model = buildFromSheetRow(row, currentUser);
+                        if (StringUtils.isBlank(model.getEmployeeName()) || StringUtils.isBlank(model.getIdCardNo())) {
+                            throw new IllegalArgumentException("姓名和证件号不能为空");
                         }
+                        rows.putIfAbsent(model.getIdCardNo(), model);
+                    } catch (RuntimeException invalidRow) {
+                        throw new BusinessException(400, "工作表[" + sheet.getSheetName() + "]第" + (rowIndex + 1)
+                                + "行数据错误，请核对姓名、证件号及扣除金额");
                     }
                 }
-                // 数据去重
-                if (!CollectionUtils.isEmpty(dataList)) {
-                    dataList = dataList.stream().collect(Collectors.collectingAndThen(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(o -> o.getIdCardNo()))), ArrayList::new));
-                    this.saveBatch(dataList);
-                }
-            } catch (IOException e) {
-                //logger.error(e.getMessage());
-                logger.error(e.getMessage(), e);
-            } finally {
-                excelImportFile.closeWorkbook();
             }
+            if (rows.isEmpty()) throw new BusinessException(400, "文件中没有可导入的扣除资料，原数据已保留");
+            if (StringUtils.isBlank(currentUser.getBookId()) || bookMapper.selectForUpdate(currentUser.getBookId()) == null) {
+                throw new BusinessException(400, "当前账套不存在");
+            }
+            this.remove(new LambdaQueryWrapper<EmployeeTaxDeduction>()
+                    .eq(EmployeeTaxDeduction::getBookId, currentUser.getBookId())
+                    .isNotNull(EmployeeTaxDeduction::getIdCardNo));
+            if (!this.saveBatch(rows.values())) throw new BusinessException(400, "扣除资料保存失败，导入已回滚");
+        } catch (IOException invalidFile) {
+            throw new BusinessException(400, "Excel文件无法读取，原数据已保留");
+        } catch (BusinessException invalidData) {
+            throw invalidData;
+        } catch (RuntimeException invalidFile) {
+            throw new BusinessException(400, "Excel文件格式不正确，原数据已保留");
+        } finally {
+            excelImportFile.closeWorkbook();
         }
     }
 

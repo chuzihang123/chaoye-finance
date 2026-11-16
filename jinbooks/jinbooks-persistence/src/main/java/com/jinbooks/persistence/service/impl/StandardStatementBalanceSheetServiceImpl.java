@@ -100,6 +100,13 @@ public class StandardStatementBalanceSheetServiceImpl implements StandardStateme
     @Override
     @Transactional
     public Message<StandardStatementBalanceSheet> save(StandardStatementBalanceSheet dto) {
+        if (!"+".equals(dto.getSymbol()) && !"-".equals(dto.getSymbol())) {
+            throw new com.jinbooks.exception.BusinessException(400, "计算符号只允许+或-");
+        }
+        if (dto.getRules() != null && dto.getRules().stream().anyMatch(rule ->
+                rule == null || (!"+".equals(rule.getSymbol()) && !"-".equals(rule.getSymbol())))) {
+            throw new com.jinbooks.exception.BusinessException(400, "取数规则的计算符号只允许+或-");
+        }
         // 顶级节点不参与行次
         if (dto.getLevel() == 1 && dto.getItemCode().endsWith("00")) {
             dto.setSortIndex(null);

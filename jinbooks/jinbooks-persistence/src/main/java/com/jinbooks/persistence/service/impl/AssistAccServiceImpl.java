@@ -52,6 +52,10 @@ public class AssistAccServiceImpl extends ServiceImpl<AssistAccMapper, AssistAcc
 
     private final AssistAccMapper assistAccMapper;
     private final IdentifierGenerator identifierGenerator;
+    @org.springframework.beans.factory.annotation.Autowired
+    com.jinbooks.persistence.mapper.VoucherItemAuxiliaryMapper voucherItemAuxiliaryMapper;
+    @org.springframework.beans.factory.annotation.Autowired
+    com.jinbooks.persistence.mapper.BookMapper bookMapper;
 
     @Override
     public Message<AssistAccVo> getById(String id) {
@@ -117,7 +121,18 @@ public class AssistAccServiceImpl extends ServiceImpl<AssistAccMapper, AssistAcc
     @Transactional
     public Message<String> delete(ListIdsDto dto) {
         List<String> ids = dto.getListIds();
-        boolean result = super.removeBatchByIds(ids);
+        if (bookMapper.selectForUpdate(dto.getBookId()) == null) throw new ServiceException("账套不存在");
+        if (assistAccMapper.selectCount(new LambdaQueryWrapper<AssistAcc>().eq(AssistAcc::getBookId, dto.getBookId())
+                .in(AssistAcc::getId, ids)) != new java.util.HashSet<>(ids).size()) {
+            throw new ServiceException("辅助项不存在或不属于当前账套");
+        }
+        if (voucherItemAuxiliaryMapper.exists(new LambdaQueryWrapper<com.jinbooks.entity.voucher.VoucherAuxiliary>()
+                .eq(com.jinbooks.entity.voucher.VoucherAuxiliary::getBookId, dto.getBookId())
+                .in(com.jinbooks.entity.voucher.VoucherAuxiliary::getItemId, ids))) {
+            throw new ServiceException("辅助核算项已被凭证引用，不能删除");
+        }
+        boolean result = super.remove(new LambdaQueryWrapper<AssistAcc>()
+                .eq(AssistAcc::getBookId, dto.getBookId()).in(AssistAcc::getId, ids));
         return result ? new Message<>(Message.SUCCESS, "删除成功") : new Message<>(Message.FAIL, "删除失败");
     }
 

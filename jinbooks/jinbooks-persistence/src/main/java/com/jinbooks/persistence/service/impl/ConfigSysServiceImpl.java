@@ -34,7 +34,7 @@ import com.jinbooks.util.DateUtils;
 import com.jinbooks.util.SpringUtils;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -115,7 +115,8 @@ public class ConfigSysServiceImpl implements ConfigSysService, ConfigService {
      * @param configKey 参数key
      * @return 参数键值
      */
-    @Cacheable(cacheNames = CONFIG_SYS, key = "#bookId + '_' + #configKey")
+    @Cacheable(cacheNames = CONFIG_SYS, key = "#bookId + '_' + #configKey",
+            condition = "#configKey != 'sys.payment.term.current'")
     @Override
     public String selectConfigByKey(String bookId, String configKey) {
         ConfigSys retConfig = baseMapper.selectOne(new LambdaQueryWrapper<ConfigSys>()
@@ -195,16 +196,11 @@ public class ConfigSysServiceImpl implements ConfigSysService, ConfigService {
 	
     @Override
     public Message<String> updateCurrentTerm(String bookId, String currentTerm) {
-        Message<List<ConfigSys>> mlc = getBookConfigList(bookId);
-        Message<String> msg = Message.failed("设置失败");
-        for (ConfigSys configSys : mlc.getData()) {
-            if (ConstsSysConfig.SYS_PAYMENT_TERM_CURRENT.equals(configSys.getConfigKey())) {
-                configSys.setConfigValue(currentTerm);
-                msg = this.update(configSys);
-            }
-        }
-
-        return msg;
+        ConfigSys config = new ConfigSys();
+        config.setBookId(bookId);
+        config.setConfigKey(ConstsSysConfig.SYS_PAYMENT_TERM_CURRENT);
+        config.setConfigValue(currentTerm);
+        return update(config);
     }
 
     /**
@@ -276,16 +272,20 @@ public class ConfigSysServiceImpl implements ConfigSysService, ConfigService {
      * @param config 参数配置信息
      * @return 结果
      */
-    @CachePut(cacheNames = CONFIG_SYS, key = "#config.configKey")
+    @CacheEvict(cacheNames = CONFIG_SYS, key = "#config.bookId + '_' + #config.configKey")
     @Override
     public Message<String> update(ConfigSys config) {
-        int row = 0;
-        if (config.getConfigId() != null) {
-            row = baseMapper.updateById(config);
-        } else {
-            row = baseMapper.update(config, new LambdaQueryWrapper<ConfigSys>()
-                    .eq(ConfigSys::getConfigKey, config.getConfigKey()));
+        if (StringUtils.isBlank(config.getBookId())) {
+            throw new ServiceException("账套参数不能为空");
         }
+        LambdaQueryWrapper<ConfigSys> scope = new LambdaQueryWrapper<ConfigSys>()
+                .eq(ConfigSys::getBookId, config.getBookId());
+        if (StringUtils.isNotBlank(config.getConfigId())) {
+            scope.eq(ConfigSys::getConfigId, config.getConfigId());
+        } else {
+            scope.eq(ConfigSys::getConfigKey, config.getConfigKey());
+        }
+        int row = baseMapper.update(config, scope);
         if (row > 0) {
             return Message.ok(config.getConfigValue());
         }
@@ -318,7 +318,9 @@ public class ConfigSysServiceImpl implements ConfigSysService, ConfigService {
     @Override
     public Boolean checkConfigKeyUnique(ConfigSys config) {
         String configId = ObjectUtil.isNull(config.getConfigId()) ? "" : config.getConfigId();
-        ConfigSys info = baseMapper.selectOne(new LambdaQueryWrapper<ConfigSys>().eq(ConfigSys::getConfigKey, config.getConfigKey()));
+        ConfigSys info = baseMapper.selectOne(new LambdaQueryWrapper<ConfigSys>()
+                .eq(ConfigSys::getBookId, config.getBookId())
+                .eq(ConfigSys::getConfigKey, config.getConfigKey()));
         return !ObjectUtil.isNotNull(info) || info.getConfigId().equals(configId);
     }
 

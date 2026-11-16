@@ -91,7 +91,7 @@ public class FundDashboardServiceImpl implements FundDashboardService {
             listData.add(value);
             data.setBalance(data.getBalance().add(subjectBalance.getBalance()));
             data.setIncomeFunds(data.getIncomeFunds().add(subjectBalance.getCurrentPeriodDebit()));
-            data.setPayoutFunds(data.getIncomeFunds().add(subjectBalance.getCurrentPeriodCredit()));
+            data.setPayoutFunds(data.getPayoutFunds().add(subjectBalance.getCurrentPeriodCredit()));
         }
         data.setNetIncomeFunds(data.getIncomeFunds().subtract(data.getPayoutFunds()));
         return data;

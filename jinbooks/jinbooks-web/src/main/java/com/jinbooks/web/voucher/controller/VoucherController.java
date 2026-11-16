@@ -94,7 +94,11 @@ public class VoucherController {
      * 查询某项明细
      */
     @GetMapping("/get/{id}")
-    public Message<VoucherVo> getById(@PathVariable(name = "id") String id) {
+    public Message<VoucherVo> getById(@PathVariable(name = "id") String id, @CurrentUser UserInfo userInfo) {
+        var voucher = voucherService.getById(id);
+        if (voucher == null || !userInfo.getBookId().equals(voucher.getBookId())) {
+            return new Message<>(403, "凭证不存在或不属于当前账套");
+        }
         return voucherService.queryById(id);
     }
 

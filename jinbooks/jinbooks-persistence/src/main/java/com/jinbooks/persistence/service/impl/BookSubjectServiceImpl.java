@@ -156,6 +156,10 @@ public class BookSubjectServiceImpl extends ServiceImpl<BookSubjectMapper, BookS
     @Override
     @Transactional
     public Message<String> update(SubjectChangeDto dto) {
+        BookSubject currentSubject = super.getById(dto.getId());
+        if (currentSubject == null || !dto.getBookId().equals(currentSubject.getBookId())) {
+            throw new BusinessException(403, "科目不存在或不属于当前账套");
+        }
         //修改时检查是否有同名的方法，不包括当前科目
         checkDuplicateSubjects(dto, true);
 
@@ -368,6 +372,10 @@ public class BookSubjectServiceImpl extends ServiceImpl<BookSubjectMapper, BookS
     @Transactional
     public Message<String> delete(ListIdsDto dto) {
         List<String> listIds = dto.getListIds();
+        if (super.count(new LambdaQueryWrapper<BookSubject>().eq(BookSubject::getBookId, dto.getBookId())
+                .in(BookSubject::getId, listIds)) != new java.util.HashSet<>(listIds).size()) {
+            throw new BusinessException(403, "科目不存在或不属于当前账套");
+        }
 
         //判断状态
         isDisable(listIds);

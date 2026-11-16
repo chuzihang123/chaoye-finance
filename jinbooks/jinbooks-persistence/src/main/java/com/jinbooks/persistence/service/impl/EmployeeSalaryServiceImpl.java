@@ -279,7 +279,7 @@ public class EmployeeSalaryServiceImpl extends ServiceImpl<EmployeeSalaryMapper,
 	                };
 	                // 4. 统一创建单元格并应用格式
 	                for (int j = 0; j < values.length; j++) {
-	                    Cell cell = row.createCell(column++ + j); // 从第6列开始
+	                    Cell cell = row.createCell(column++);
 	                    cell.setCellValue(values[j]);
 	                    cell.setCellStyle(cellStyle);
 	                }

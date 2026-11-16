@@ -29,6 +29,18 @@ import java.util.List;
 
 @Mapper
 public interface StatementSubjectBalanceMapper extends BaseMapperPlus<StatementSubjectBalanceMapper, StatementSubjectBalance, StatementSubjectBalance> {
+    @Select("""
+        SELECT COALESCE(SUM(sb.closing_balance_credit-sb.closing_balance_debit),0) AS balance,
+               COALESCE(SUM(sb.opening_year_balance_credit-sb.opening_year_balance_debit),0) AS opening_year_balance_credit
+        FROM jbx_statement_subject_balance sb
+        JOIN jbx_book_subject s ON s.book_id=sb.book_id AND s.code=sb.subject_code AND s.deleted='n'
+        WHERE sb.book_id=#{bookId} AND sb.year_period=#{yearPeriod} AND sb.deleted='n'
+          AND s.category=6 AND (s.is_auxiliary IS NULL OR s.is_auxiliary<>1)
+          AND NOT EXISTS (SELECT 1 FROM jbx_book_subject child WHERE child.book_id=s.book_id
+              AND child.deleted='n' AND child.code<>s.code AND child.code LIKE CONCAT(s.code,'%')
+              AND (child.is_auxiliary IS NULL OR child.is_auxiliary<>1))
+        """)
+    StatementSubjectBalance unclosedProfit(@Param("bookId") String bookId, @Param("yearPeriod") String yearPeriod);
     List<StatementSubjectBalance> groupCodeSubjectBalance(@Param("dto") StatementParamsDto dto,
                                                           @Param("allMonths") List<String> allMonths,
                                                           @Param("minPeriod") String minPeriod,

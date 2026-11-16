@@ -180,7 +180,7 @@ const data: any = reactive({
     codePath: null,
     namePath: null,
     type: null,
-    level: null,
+    level: 0,
     division: null,
     country: null,
     region: null,

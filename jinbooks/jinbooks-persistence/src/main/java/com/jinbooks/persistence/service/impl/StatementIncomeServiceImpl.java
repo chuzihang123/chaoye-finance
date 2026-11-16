@@ -56,7 +56,6 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ResourceUtils;
 
 
 @RequiredArgsConstructor
@@ -203,8 +202,8 @@ public class StatementIncomeServiceImpl implements StatementIncomeService {
                                 if (rule.getRule().equalsIgnoreCase(Rules.PROFIT_AND_LOSS_AMOUNT)) {
                                     //+ (借方-贷方)
                                     currentAmount = currentAmount.add(
-                                            voucherItemVo.getDebitAmount().abs()
-                                                    .subtract(voucherItemVo.getCreditAmount().abs()));
+                                            voucherItemVo.getDebitAmount()
+                                                    .subtract(voucherItemVo.getCreditAmount()));
                                 } else if (rule.getRule().equalsIgnoreCase(Rules.DEBIT_AMOUNT)) {
                                     //+ 借方
                                     currentAmount = currentAmount.add(voucherItemVo.getDebitAmount());
@@ -216,8 +215,8 @@ public class StatementIncomeServiceImpl implements StatementIncomeService {
                                 if (rule.getRule().equalsIgnoreCase(Rules.PROFIT_AND_LOSS_AMOUNT)) {
                                     //- (借方-贷方)
                                     currentAmount = currentAmount.subtract(
-                                            voucherItemVo.getDebitAmount().abs()
-                                                    .subtract(voucherItemVo.getCreditAmount().abs()));
+                                            voucherItemVo.getDebitAmount()
+                                                    .subtract(voucherItemVo.getCreditAmount()));
                                 } else if (rule.getRule().equalsIgnoreCase(Rules.DEBIT_AMOUNT)) {
                                     //- 借方
                                     currentAmount = currentAmount.subtract(voucherItemVo.getDebitAmount());
@@ -358,8 +357,8 @@ public class StatementIncomeServiceImpl implements StatementIncomeService {
                                 if (rule.getRule().equalsIgnoreCase(Rules.PROFIT_AND_LOSS_AMOUNT)) {
                                     //+ (借方-贷方)
                                     yearAmount = yearAmount.add(
-                                            voucherItemVo.getDebitAmount().abs()
-                                                    .subtract(voucherItemVo.getCreditAmount().abs()));
+                                            voucherItemVo.getDebitAmount()
+                                                    .subtract(voucherItemVo.getCreditAmount()));
                                 } else if (rule.getRule().equalsIgnoreCase(Rules.DEBIT_AMOUNT)) {
                                     //+ 借方
                                     yearAmount = yearAmount.add(voucherItemVo.getDebitAmount());
@@ -371,8 +370,8 @@ public class StatementIncomeServiceImpl implements StatementIncomeService {
                                 if (rule.getRule().equalsIgnoreCase(Rules.PROFIT_AND_LOSS_AMOUNT)) {
                                     //- (借方-贷方)
                                     yearAmount = yearAmount.subtract(
-                                            voucherItemVo.getDebitAmount().abs()
-                                                    .subtract(voucherItemVo.getCreditAmount().abs()));
+                                            voucherItemVo.getDebitAmount()
+                                                    .subtract(voucherItemVo.getCreditAmount()));
                                 } else if (rule.getRule().equalsIgnoreCase(Rules.DEBIT_AMOUNT)) {
                                     //- 借方
                                     yearAmount = yearAmount.subtract(voucherItemVo.getDebitAmount());
@@ -456,13 +455,7 @@ public class StatementIncomeServiceImpl implements StatementIncomeService {
     public void export(StatementParamsDto dto, HttpServletResponse response) throws IOException {
         StatementIncome incomeStatement = getIncomeStatement(dto, true).getData();
         Book book = bookMapper.selectById(dto.getBookId());
-        String templatePath = ResourceUtils
-                .getURL("classpath:static/export-template/template-income.xlsx")
-                .getPath();
-        // 注意：Windows下getPath()前会带'/'，可做处理
-        if (templatePath.startsWith("/")) {
-            templatePath = templatePath.substring(1);
-        }
+        String templatePath = "classpath:static/export-template/template-income.xlsx";
         Path tempFilePath = Files.createTempFile("template-income_", ".xlsx");
         File tempFile = tempFilePath.toFile();
 

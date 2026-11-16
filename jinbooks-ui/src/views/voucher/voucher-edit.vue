@@ -278,7 +278,7 @@ import {parseTime} from "@/utils/Jinbooks";
 import * as subjectApi from "@/api/system/standard/standard-subject"
 import {draftVoucher, getOneVoucher, getVoucherAbleWordNum, submitVoucher} from "@/api/system/voucher/voucher";
 import {validateForm} from "@/utils"
-import {useRoute} from "vue-router";
+import {useRoute, useRouter} from "vue-router";
 import bookStore from "@/store/modules/bookStore";
 import Decimal from 'decimal.js'
 
@@ -352,6 +352,7 @@ const props: any = defineProps({
 
 const auxiliaryVisible = ref<Array<boolean>>([])
 const route: any = useRoute()
+const router = useRouter()
 // 定义回调接口，提交按钮触发
 const emit: any = defineEmits(['submit', "update:modelValue"])
 const visibleContextmenu = ref(false)
@@ -838,7 +839,7 @@ function isCurrentOrFutureMonth(date: Date) {
 
 // 打印
 const onPrint = () => {
-  const url = "/jinbooks/temporary/voucher-print?mode=print";
+  const url = router.resolve({name: 'PrintRecordingVoucher', query: {mode: 'print'}}).href;
   window.localStorage.setItem("voucher-print-data", JSON.stringify(formData.value))
   window.open(url, "_blank")
 
@@ -896,11 +897,13 @@ const onSubmitDraft = () => {
   }
 
   submitButtonLoading.value = true
-  draftVoucher(formData.value).then((res: any) => {
+  draftVoucher(formData.value).then(async (res: any) => {
     ElMessage.info(res.message || `暂存成功`)
-    getOneVoucher(res.data).then((voucherRes: any) => {
-      formData.value = voucherRes.data
-    })
+    formData.value.id = res.data
+    const voucherRes: any = await getOneVoucher(res.data)
+    formData.value = voucherRes.data
+  }).catch(() => {
+    // 请求错误由统一拦截器显示，保留当前输入供重试。
   }).finally(() => {
     submitButtonLoading.value = false
   })

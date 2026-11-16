@@ -48,7 +48,6 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.ResourceUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -243,13 +242,7 @@ public class StatementBalanceSheetServiceImpl implements StatementBalanceSheetSe
         List<StatementBalanceSheetItem> maxData = assets.size() > liability.size() ? assets : liability;
         Book book = bookMapper.selectById(dto.getBookId());
 
-        String templatePath = ResourceUtils
-                .getURL("classpath:static/export-template/template-balance-sheet.xlsx")
-                .getPath();
-        // 注意：Windows下getPath()前会带'/'，可做处理
-        if (templatePath.startsWith("/")) {
-            templatePath = templatePath.substring(1);
-        }
+        String templatePath = "classpath:static/export-template/template-balance-sheet.xlsx";
         Path tempFilePath = Files.createTempFile("template-balance-sheet_", ".xlsx");
         File tempFile = tempFilePath.toFile();
 
@@ -422,6 +415,20 @@ public class StatementBalanceSheetServiceImpl implements StatementBalanceSheetSe
                 }
             }
         }
+        // 未结转损益仍属于本年利润，已结转后损益科目余额自然归零。
+        rules.stream().filter(rule -> "4103".equals(rule.getSubjectCode()) || "4104".equals(rule.getSubjectCode()))
+                .findFirst().ifPresent(rule -> {
+                    StatementSubjectBalance profit = subjectBalanceMapper.unclosedProfit(bookId, yearPeriod);
+                    StatementBalanceSheetItem equity = mapSheet.get(rule.getItemCode());
+                    if (profit != null && equity != null) {
+                        if (updateParams == 1 || updateParams == 3) {
+                            equity.setInitialBalance(equity.getInitialBalance().add(profit.getOpeningYearBalanceCredit()));
+                        }
+                        if (updateParams == 2 || updateParams == 3) {
+                            equity.setCurrentBalance(equity.getCurrentBalance().add(profit.getBalance()));
+                        }
+                    }
+                });
     }
 
 
@@ -576,21 +583,29 @@ public class StatementBalanceSheetServiceImpl implements StatementBalanceSheetSe
 
     @Override
     public void updateRuleBalance(StatementSubjectBalance subjectBalance, StatementRules statementRules) {
-        if (statementRules != null && statementRules.getOpeningYearBalance() == null) {
-            statementRules.setOpeningYearBalance(BigDecimal.ZERO);
+        if (statementRules == null) return;
+        statementRules.setOpeningYearBalance(BigDecimal.ZERO);
+        statementRules.setClosingBalance(BigDecimal.ZERO);
+        if (subjectBalance == null) return;
+        BigDecimal openingDebit = Objects.requireNonNullElse(subjectBalance.getOpeningYearBalanceDebit(), BigDecimal.ZERO);
+        BigDecimal openingCredit = Objects.requireNonNullElse(subjectBalance.getOpeningYearBalanceCredit(), BigDecimal.ZERO);
+        BigDecimal closingDebit = Objects.requireNonNullElse(subjectBalance.getClosingBalanceDebit(), BigDecimal.ZERO);
+        BigDecimal closingCredit = Objects.requireNonNullElse(subjectBalance.getClosingBalanceCredit(), BigDecimal.ZERO);
+        BigDecimal opening = openingDebit.subtract(openingCredit);
+        BigDecimal closing = closingDebit.subtract(closingCredit);
+        String rule = Objects.requireNonNullElse(statementRules.getRule(), "BALANCE");
+        if (rule.contains("CREDIT_BALANCE")) {
+            opening = opening.negate().max(BigDecimal.ZERO);
+            closing = closing.negate().max(BigDecimal.ZERO);
+        } else if (rule.contains("DEBIT_BALANCE")) {
+            opening = opening.max(BigDecimal.ZERO);
+            closing = closing.max(BigDecimal.ZERO);
+        } else if ("2".equals(subjectBalance.getDirection())) {
+            opening = opening.negate();
+            closing = closing.negate();
         }
-        if (statementRules != null && statementRules.getClosingBalance() == null) {
-            statementRules.setClosingBalance(BigDecimal.ZERO);
-        }
-
-        if (subjectBalance != null && statementRules != null) {
-            statementRules.setOpeningYearBalance(
-                    statementRules.getOpeningYearBalance().add(
-                            subjectBalance.getOpeningYearBalanceDebit()
-                                    .subtract(subjectBalance.getOpeningYearBalanceCredit()))
-            );
-            statementRules.setClosingBalance(statementRules.getClosingBalance().add(subjectBalance.getBalance()));
-        }
+        statementRules.setOpeningYearBalance(opening);
+        statementRules.setClosingBalance(closing);
     }
 
 }

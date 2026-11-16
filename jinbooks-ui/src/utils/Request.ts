@@ -172,7 +172,7 @@ service.interceptors.response.use((res: any) => {
     (error: any) => {
         let {message, response} = error;
         console.error(error)
-        if (response.status === 401) {
+        if (response?.status === 401) {
             return err401(response)
         }
 

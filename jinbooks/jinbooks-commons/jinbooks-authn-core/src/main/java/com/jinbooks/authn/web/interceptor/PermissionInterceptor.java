@@ -36,6 +36,8 @@ import com.jinbooks.authn.SignedPrincipal;
 import com.jinbooks.authn.jwt.service.AuthTokenService;
 import com.jinbooks.authn.session.SessionManager;
 import com.jinbooks.authn.web.AuthorizationUtils;
+import com.jinbooks.authn.web.RequestPermissionService;
+import com.jinbooks.exception.BusinessException;
 import com.jinbooks.configuration.ApplicationConfig;
 /**
  * 登录认证判断
@@ -61,6 +63,8 @@ public class PermissionInterceptor  implements AsyncHandlerInterceptor  {
 	 */
 	@Autowired
 	AuthTokenService authTokenService ;
+    @Autowired
+    RequestPermissionService requestPermissionService;
 	/**
 	 * 是否管理端
 	 */
@@ -76,7 +80,14 @@ public class PermissionInterceptor  implements AsyncHandlerInterceptor  {
 		 logger.trace("Permission Interceptor .");
 		 logger.trace("request URL {} ",request.getRequestURI());
 		 //认证信息识别
-		 AuthorizationUtils.authenticate(request, authTokenService, sessionManager);
+        try {
+            AuthorizationUtils.authenticate(request, authTokenService, sessionManager);
+        } catch (java.text.ParseException | IllegalArgumentException invalidToken) {
+            response.setStatus(401);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":401,\"message\":\"登录已失效，请重新登录\"}");
+            return false;
+        }
 		 SignedPrincipal principal = AuthorizationUtils.getPrincipal();//读取认证当事人
 		//判断用户是否登录,判断用户是否登录用户
 		if(principal == null){
@@ -86,6 +97,19 @@ public class PermissionInterceptor  implements AsyncHandlerInterceptor  {
 		    return false;
 		}
 		
+        var user = principal.getUserInfo();
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        if (!requestPermissionService.canAccessBook(user, user.getBookId())) {
+            throw new BusinessException(403, "当前用户无权访问该账套");
+        }
+        boolean writes = !java.util.Set.of("GET", "HEAD", "OPTIONS").contains(request.getMethod())
+                || path.matches("(?i).*/(checkout|summaryAccount|updateStatus|unlock|lock|resetPassword|reorgDisplayName)(/.*)?");
+        boolean ownSession = path.equals("/logout") || path.startsWith("/logout/");
+        boolean profile = path.equals("/users/update") || path.equals("/users/updatePassword");
+        if (writes && !ownSession && !profile
+                && !requestPermissionService.canWrite(user, request.getMethod(), path)) {
+            throw new BusinessException(403, "未授权当前接口写操作，请由管理员分配对应API资源权限");
+        }
 		return true;
 	}
 

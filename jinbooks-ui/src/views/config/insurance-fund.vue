@@ -1,5 +1,6 @@
 <template>
   <div class="app-container">
+    <el-alert v-if="!form.id" title="尚未配置社保公积金，请填写后保存" type="info" :closable="false" show-icon />
     <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
       <el-card class="common-card query-box">
         <template #header>
@@ -404,8 +405,25 @@ const {proxy} = getCurrentInstance()!;
 const {t} = useI18n()
 
 const formRef = ref<InstanceType<typeof ElForm> | null>(null);
+const emptyForm = {
+  payBase: 0,
+  endowmentPersonal: 0,
+  endowmentBusiness: 0,
+  medicalPersonal: 0,
+  medicalBusiness: 0,
+  unemploymentPersonal: 0,
+  unemploymentBusiness: 0,
+  employmentInjuryPersonal: 0,
+  employmentInjuryBusiness: 0,
+  maternityPersonal: 0,
+  maternityBusiness: 0,
+  providentFundSupPersonal: 0,
+  providentFundSupBusiness: 0,
+  seriousMedicalPersonal: 0,
+  seriousMedicalBusiness: 0
+};
 const data: any = reactive({
-  form: {},
+  form: {...emptyForm},
   rules: {
     payBase: [
       {required: true, message: "请填写", trigger: "blur"}
@@ -453,7 +471,7 @@ const {form, rules} = toRefs(data);
 const loading: any = ref(true);
 
 function percentValue(feeValue: number, percentValue: number): Number {
-  return Math.round(Number((feeValue * percentValue).toFixed(3))) / 100;
+  return Math.round(Number((Number(feeValue || 0) * Number(percentValue || 0)).toFixed(3))) / 100;
 }
 
 // 计算费用的方法
@@ -487,14 +505,14 @@ const calculateFees = () => {
       + form.value.employmentInjuryBusinessFee
       + form.value.maternityBusinessFee
       + form.value.providentFundSupBusinessFee
-      + form.value.seriousMedicalBusiness;
+      + Number(form.value.seriousMedicalBusiness || 0);
   form.value.payBasePersonal = form.value.endowmentPersonalFee
       + form.value.medicalPersonalFee
       + form.value.unemploymentPersonalFee
       + form.value.employmentInjuryPersonalFee
       + form.value.maternityPersonalFee
       + form.value.providentFundSupPersonalFee
-      + form.value.seriousMedicalPersonal;
+      + Number(form.value.seriousMedicalPersonal || 0);
 }
 
 // 监听缴费基数和比例的变化
@@ -512,7 +530,9 @@ watch(
       () => form.value.maternityPersonal,
       () => form.value.maternityBusiness,
       () => form.value.providentFundSupPersonal,
-      () => form.value.providentFundSupBusiness
+      () => form.value.providentFundSupBusiness,
+      () => form.value.seriousMedicalPersonal,
+      () => form.value.seriousMedicalBusiness
     ],
     () => {
       calculateFees()
@@ -522,11 +542,13 @@ watch(
 function get(): any {
   loading.value = true;
   configGetCurrent().then((res: any) => {
-    form.value = res.data
+    form.value = {...emptyForm, ...res.data}
     nextTick(() => {
       calculateFees()
       loading.value = false;
     })
+  }).catch(() => {
+    loading.value = false;
   });
 }
 

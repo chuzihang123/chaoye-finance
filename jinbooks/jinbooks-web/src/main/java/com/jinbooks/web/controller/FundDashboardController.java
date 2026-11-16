@@ -54,8 +54,8 @@ public class FundDashboardController {
     @GetMapping(value = {"/fund-balance"})
     public Message<FundBalanceVo> statisticsFundBalance(@CurrentUser UserInfo currentUser,
                                                         @ParameterObject StatementParamsDto params) {
-        params.parse();
         params.setBookId(currentUser.getBookId());
+        params.parse();
         FundBalanceVo data = fundDashboardService.statisticsFundBalance(params);
         return Message.ok(data);
     }
@@ -70,8 +70,8 @@ public class FundDashboardController {
     @GetMapping(value = {"/accounts-receivable"})
     public Message<AccountsReceivePaymentVo> statisticsAccountsReceivable(@CurrentUser UserInfo currentUser,
                                                                           @ParameterObject StatementParamsDto params) {
-        params.parse();
         params.setBookId(currentUser.getBookId());
+        params.parse();
         AccountsReceivePaymentVo data = fundDashboardService.statisticsAccountsReceivable(params);
         return Message.ok(data);
     }
@@ -86,8 +86,8 @@ public class FundDashboardController {
     @GetMapping(value = {"/accounts-payable"})
     public Message<AccountsReceivePaymentVo> statisticsAccountsPayable(@CurrentUser UserInfo currentUser,
                                                                        @ParameterObject StatementParamsDto params) {
-        params.parse();
         params.setBookId(currentUser.getBookId());
+        params.parse();
         AccountsReceivePaymentVo data = fundDashboardService.statisticsAccountsPayable(params);
         return Message.ok(data);
     }
@@ -102,8 +102,8 @@ public class FundDashboardController {
     @GetMapping(value = {"/able-cash"})
     public Message<ExpectedAvailableFunds> statisticsAbleCash(@CurrentUser UserInfo currentUser,
                                                               @ParameterObject StatementParamsDto params) {
-        params.parse();
         params.setBookId(currentUser.getBookId());
+        params.parse();
         ExpectedAvailableFunds data = fundDashboardService.statisticsAbleCash(params);
         return Message.ok(data);
     }
@@ -118,8 +118,8 @@ public class FundDashboardController {
     @GetMapping(value = {"/other-subjects"})
     public Message<List<OtherSubjectsVo>> statisticsOtherSubjects(@CurrentUser UserInfo currentUser,
                                                               @ParameterObject StatementParamsDto params) {
-        params.parse();
         params.setBookId(currentUser.getBookId());
+        params.parse();
         List<OtherSubjectsVo> data = fundDashboardService.statisticsOtherSubjects(params);
         return Message.ok(data);
     }
@@ -134,8 +134,8 @@ public class FundDashboardController {
     @GetMapping(value = {"/net-profit"})
     public Message<NetProfitVo> statisticsNetProfit(@CurrentUser UserInfo currentUser,
                                                               @ParameterObject StatementParamsDto params) {
-        params.parse();
         params.setBookId(currentUser.getBookId());
+        params.parse();
         NetProfitVo data = fundDashboardService.statisticsNetProfit(params);
         return Message.ok(data);
     }
@@ -150,8 +150,8 @@ public class FundDashboardController {
     @GetMapping(value = {"/revenue-cost"})
     public Message<RevenueCostVo> statisticsRevenueCost(@CurrentUser UserInfo currentUser,
                                                         @ParameterObject StatementParamsDto params) {
-        params.parse();
         params.setBookId(currentUser.getBookId());
+        params.parse();
         RevenueCostVo data = fundDashboardService.statisticsRevenueCost(params);
         return Message.ok(data);
     }
@@ -166,8 +166,8 @@ public class FundDashboardController {
     @GetMapping(value = {"/expense"})
     public Message<ExpenseVo> statisticsExpense(@CurrentUser UserInfo currentUser,
                                                         @ParameterObject StatementParamsDto params) {
-        params.parse();
         params.setBookId(currentUser.getBookId());
+        params.parse();
         ExpenseVo data = fundDashboardService.statisticsExpense(params);
         return Message.ok(data);
     }
@@ -182,8 +182,8 @@ public class FundDashboardController {
     @GetMapping(value = {"/added-tax"})
     public Message<AddTaxVo> statisticsAddedTax(@CurrentUser UserInfo currentUser,
                                                         @ParameterObject StatementParamsDto params) {
-        params.parse();
         params.setBookId(currentUser.getBookId());
+        params.parse();
         AddTaxVo data = fundDashboardService.statisticsAddedTax(params);
         return Message.ok(data);
     }

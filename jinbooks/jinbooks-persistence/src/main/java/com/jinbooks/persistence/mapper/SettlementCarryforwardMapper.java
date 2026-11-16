@@ -26,8 +26,18 @@ import com.jinbooks.entity.voucher.dto.VoucherTemplatePageDto;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 @Mapper
 public interface SettlementCarryforwardMapper extends BaseMapper<SettlementCarryforward> {
+    @Select("""
+        SELECT carry.* FROM jbx_settlement_carryforward carry
+        JOIN jbx_voucher_template template ON template.id=carry.voucher_template_id
+        WHERE carry.book_id=#{bookId} AND carry.year_period=#{period} AND carry.deleted='n'
+          AND template.code=#{code} AND template.category=#{category}
+        ORDER BY carry.created_date,carry.id LIMIT 1
+        """)
+    SettlementCarryforward findByTemplateCode(@Param("bookId") String bookId, @Param("period") String period,
+            @Param("code") String code, @Param("category") Integer category);
     Page<SettlementCarryforwardVo> pageList(Page page, @Param("dto") VoucherTemplatePageDto dto);
 }

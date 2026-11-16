@@ -23,6 +23,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.springframework.core.io.ClassPathResource;
 
 import java.io.*;
 import java.lang.reflect.Field;
@@ -76,7 +77,10 @@ public class ExcelExporter {
     public static <T> void export(ExcelParams<T> params) throws IOException {
         Objects.requireNonNull(params, "ExcelParams 不能为 null");
 
-        try (InputStream is = Files.newInputStream(Paths.get(params.getTemplateFilePath()));
+        String templatePath = params.getTemplateFilePath();
+        try (InputStream is = templatePath.startsWith("classpath:")
+                ? new ClassPathResource(templatePath.substring("classpath:".length())).getInputStream()
+                : Files.newInputStream(Paths.get(templatePath));
              Workbook wb = WorkbookFactory.create(is)) {
 
             Sheet sheet = obtainSheet(wb, params.getSheetName());

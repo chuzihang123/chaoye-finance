@@ -46,7 +46,6 @@ import com.jinbooks.util.excel.ExcelParams;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ResourceUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -93,13 +92,7 @@ public class StatementReportServiceImpl implements StatementReportService {
         dto.parse();
         List<StatementCashFlow> cashFlows = cashFlowStatement(dto).getData();
         Book book = bookMapper.selectById(dto.getBookId());
-        String templatePath = ResourceUtils
-                .getURL("classpath:static/export-template/template-cash-flow.xlsx")
-                .getPath();
-        // 注意：Windows下getPath()前会带'/'，可做处理
-        if (templatePath.startsWith("/")) {
-            templatePath = templatePath.substring(1);
-        }
+        String templatePath = "classpath:static/export-template/template-cash-flow.xlsx";
         Path tempFilePath = Files.createTempFile("template-cash-flow_", ".xlsx");
         File tempFile = tempFilePath.toFile();
 
@@ -153,13 +146,7 @@ public class StatementReportServiceImpl implements StatementReportService {
         dto.parse();
         List<StatementSubjectBalance> subjectBalances = subjectBalance(dto).getData();
         Book book = bookMapper.selectById(dto.getBookId());
-        String templatePath = ResourceUtils
-                .getURL("classpath:static/export-template/template-subject-balance.xlsx")
-                .getPath();
-        // 注意：Windows下getPath()前会带'/'，可做处理
-        if (templatePath.startsWith("/")) {
-            templatePath = templatePath.substring(1);
-        }
+        String templatePath = "classpath:static/export-template/template-subject-balance.xlsx";
         Path tempFilePath = Files.createTempFile("template-subject-balance_", ".xlsx");
         File tempFile = tempFilePath.toFile();
 
@@ -215,13 +202,7 @@ public class StatementReportServiceImpl implements StatementReportService {
         String voucherNumber = result.get("total").toString();
         String voucherFileNum = result.get("files").toString();
 
-        String templatePath = ResourceUtils
-                .getURL("classpath:static/export-template/template-voucher-summary.xlsx")
-                .getPath();
-        // 注意：Windows下getPath()前会带'/'，可做处理
-        if (templatePath.startsWith("/")) {
-            templatePath = templatePath.substring(1);
-        }
+        String templatePath = "classpath:static/export-template/template-voucher-summary.xlsx";
         Path tempFilePath = Files.createTempFile("template-voucher-summary_", ".xlsx");
         File tempFile = tempFilePath.toFile();
 
