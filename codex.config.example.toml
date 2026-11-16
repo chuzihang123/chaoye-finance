@@ -1,0 +1,10 @@
+# Merge this section into C:\Users\A\.codex\config.toml.
+# Replace absolute paths and backend URL for your installation.
+[mcp_servers.jinbooks]
+command = "node"
+args = ["--env-file=E:/WorkSpace/财务/jinbooks/mcp-server/.env", "E:/WorkSpace/财务/jinbooks/mcp-server/src/index.js"]
+startup_timeout_sec = 20
+tool_timeout_sec = 180
+
+[mcp_servers.jinbooks.env]
+JINBOOKS_DOWNLOAD_DIR = "E:/WorkSpace/财务/jinbooks/mcp-server/downloads"
