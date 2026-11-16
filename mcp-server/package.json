@@ -1,7 +1,14 @@
 {
-  "name": "jinbooks-mcp-server",
+  "name": "jinbooks-mcp",
   "version": "1.0.0",
-  "private": true,
+  "description": "JinBooks MCP server for Codex with OpenAPI discovery, validation and operation previews",
+  "license": "Apache-2.0",
+  "bin": { "jinbooks-mcp": "src/index.js" },
+  "files": ["src/", "README.md", "LICENSE", ".env.example"],
+  "repository": { "type": "git", "url": "git+https://github.com/chuzihang123/jinbooks-mcp.git", "directory": "mcp-server" },
+  "homepage": "https://github.com/chuzihang123/jinbooks-mcp/tree/main/mcp-server",
+  "keywords": ["mcp", "jinbooks", "codex", "accounting"],
+  "publishConfig": { "access": "public" },
   "type": "module",
   "engines": { "node": ">=22" },
   "scripts": {

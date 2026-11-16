@@ -12,6 +12,40 @@ MCP 进程由 Codex 启动。系统后端、数据库和 Redis 按项目原有�
 
 ## 安装和配置
 
+### 通过公开 GitHub 包安装
+
+Node.js 22 及以上可直接运行以下命令。`npm` 分支提供可安装的 MCP 包。
+
+```powershell
+npx --yes --package=github:chuzihang123/jinbooks-mcp#npm jinbooks-mcp
+```
+
+也可以全局安装后运行。
+
+```powershell
+npm install --global github:chuzihang123/jinbooks-mcp#npm
+jinbooks-mcp
+```
+
+服务通过 stdio 等待 MCP 客户端请求。安装后在 Codex 中使用以下配置，填写实际后端地址和认证信息。
+
+```toml
+[mcp_servers.jinbooks]
+command = "npx"
+args = ["--yes", "--package=github:chuzihang123/jinbooks-mcp#npm", "jinbooks-mcp"]
+startup_timeout_sec = 120
+tool_timeout_sec = 180
+
+[mcp_servers.jinbooks.env]
+JINBOOKS_BASE_URL = "http://127.0.0.1:2154/jinbooks-api"
+JINBOOKS_USERNAME = "填写账号"
+JINBOOKS_PASSWORD = "填写密码"
+```
+
+首次运行需要联网下载依赖。配置中的账号和密码保存在本机 Codex 配置中。npx 运行时通过客户端环境变量接收配置。源码 `npm start` 支持从当前目录 `.env` 加载配置。当前上传文件的默认允许目录为 MCP 进程工作目录，可使用 `JINBOOKS_UPLOAD_ROOTS` 显式配置。
+
+### 从源码安装
+
 在 PowerShell 执行以下命令。
 
 ```powershell
@@ -90,7 +124,7 @@ JINBOOKS_DOWNLOAD_DIR = "E:/WorkSpace/财务/jinbooks/mcp-server/downloads"
 }
 ```
 
-上传接口及字段名从接口描述中取得。上传路径必须为绝对路径，文件必须存在且为普通文件。默认允许上传的目录为当前仓库根目录，可通过 `JINBOOKS_UPLOAD_ROOTS` 配置绝对目录的 JSON 数组。例如上传 `E:/资料` 内文件时，在 `.env` 中加入以下配置。
+上传接口及字段名从接口描述中取得。上传路径必须为绝对路径，文件必须存在且为普通文件。默认允许上传的目录为 MCP 进程工作目录，可通过 `JINBOOKS_UPLOAD_ROOTS` 配置绝对目录的 JSON 数组。例如上传 `E:/资料` 内文件时，在 `.env` 中加入以下配置。
 
 ```dotenv
 JINBOOKS_UPLOAD_ROOTS=["E:/WorkSpace/财务/jinbooks","E:/资料"]

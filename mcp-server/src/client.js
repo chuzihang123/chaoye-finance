@@ -1,6 +1,5 @@
 import { mkdir, open, realpath, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { randomUUID, createHash } from 'node:crypto';
 import { resolveRef, validateSchema } from './validation.js';
 
@@ -20,7 +19,7 @@ export class JinbooksClient {
     this.downloadDir = path.resolve(env.JINBOOKS_DOWNLOAD_DIR || './downloads');
     this.cookies = new Map();
     this.secrets = new Set([this.token, this.refreshToken, this.password].filter(Boolean));
-    this.uploadRoots = env.JINBOOKS_UPLOAD_ROOTS ? JSON.parse(env.JINBOOKS_UPLOAD_ROOTS) : [fileURLToPath(new URL('../../', import.meta.url))];
+    this.uploadRoots = env.JINBOOKS_UPLOAD_ROOTS ? JSON.parse(env.JINBOOKS_UPLOAD_ROOTS) : [process.cwd()];
     if (!Array.isArray(this.uploadRoots) || !this.uploadRoots.length || this.uploadRoots.some(root => typeof root !== 'string' || !path.isAbsolute(root))) throw new Error('JINBOOKS_UPLOAD_ROOTS 必须是绝对目录的 JSON 数组');
     this.maxUploadBytes = Number(env.JINBOOKS_MAX_UPLOAD_BYTES || 20 * 1024 * 1024);
     if (!Number.isSafeInteger(this.maxUploadBytes) || this.maxUploadBytes < 1) throw new Error('无效上传大小上限');
