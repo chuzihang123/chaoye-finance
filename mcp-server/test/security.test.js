@@ -116,6 +116,16 @@ test('重启后首次业务操作可使用配置账号重新登录', async () =>
   assert.equal(calls.length, 2);
 });
 
+test('后端 OpenAPI 包含上下文前缀时仅发送一次前缀', async () => {
+  const { client, calls } = fixture();
+  client.spec.paths['/jinbooks-api/fetch'] = client.spec.paths['/fetch'];
+  delete client.spec.paths['/fetch'];
+  const operation = await client.operation('GET /fetch');
+  assert.equal(operation.path, '/fetch');
+  await client.execute({ operationId: 'GET /fetch', query: { year: 2026 } });
+  assert.equal(calls[0].route, '/fetch');
+});
+
 test('上传拒绝相对路径、越界、缺失、目录、过大文件及目录链接逃逸', async t => {
   const root = await mkdtemp(path.join(tmpdir(), 'jinbooks-upload-test-'));
   const outside = await mkdtemp(path.join(tmpdir(), 'jinbooks-outside-test-'));

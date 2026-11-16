@@ -86,6 +86,23 @@ JINBOOKS_DOWNLOAD_DIR = "E:/WorkSpace/财务/jinbooks/mcp-server/downloads"
 
 ## 工具
 
+### 远程 HTTP 接入
+
+部署服务器可运行 `npm run start:http` 或 `jinbooks-mcp-http`。它使用 MCP Streamable HTTP 传输，同一会话保留登录、Cookie 和操作确认状态，每个会话独立持有客户端实例。
+
+启动前配置 `JINBOOKS_MCP_TOKEN`，至少 32 个字符。HTTP 服务默认监听 `127.0.0.1:3155`，通过 HTTPS 反向代理将 `/mcp` 转发至该服务。所有 `/mcp` 请求均校验 `Authorization: Bearer <访问令牌>`。此访问令牌用于连接 MCP，JinBooks 用户认证仍按前述配置处理。
+
+```toml
+[mcp_servers.jinbooks_remote]
+url = "https://你的域名/mcp"
+bearer_token_env_var = "JINBOOKS_REMOTE_MCP_TOKEN"
+tool_timeout_sec = 180
+```
+
+在启动 Codex 的环境中设置 `JINBOOKS_REMOTE_MCP_TOKEN` 为服务器的访问令牌。浏览器来源请求默认拒绝，可通过 `JINBOOKS_MCP_ORIGINS` 指定允许的 Origin JSON 数组。服务提供 `/healthz` 健康检查，限制最大请求体为 1 MiB、最大会话数为 32，空闲会话一小时后回收。服务重启后客户端需要重新初始化会话。
+
+HTTP 模式部署时，应通过 `JINBOOKS_UPLOAD_ROOTS` 指定服务器上用于上传的目录。远程工具中的上传和下载路径对应服务端文件系统。
+
 | 工具 | 用途 |
 | --- | --- |
 | `jinbooks_status` | 检查 OpenAPI 连通性、认证状态，读取当前用户及账套 |

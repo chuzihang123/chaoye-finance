@@ -126,11 +126,14 @@ export class JinbooksClient {
     const spec = await this.document();
     return Object.entries(spec.paths).flatMap(([route, item]) => Object.entries(item)
       .filter(([method]) => methods.has(method))
-      .map(([method, operation]) => ({
-        id: `${method.toUpperCase()} ${route}`, method: method.toUpperCase(), path: route,
-        summary: operation.summary || '', description: operation.description || '', tags: operation.tags || [],
-        operation, parameters: [...(item.parameters || []), ...(operation.parameters || [])]
-      })));
+      .map(([method, operation]) => {
+        const apiPath = this.base.pathname && route.startsWith(this.base.pathname + '/') ? route.slice(this.base.pathname.length) : route;
+        return {
+          id: `${method.toUpperCase()} ${apiPath}`, method: method.toUpperCase(), path: apiPath,
+          summary: operation.summary || '', description: operation.description || '', tags: operation.tags || [],
+          operation, parameters: [...(item.parameters || []), ...(operation.parameters || [])]
+        };
+      }));
   }
 
   async operation(id) {

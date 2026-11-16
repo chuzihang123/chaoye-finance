@@ -28,6 +28,7 @@ import java.lang.annotation.Target;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
+import io.swagger.v3.oas.annotations.Parameter;
 
 /**
  * 获取当前登录用户注解
@@ -45,5 +46,6 @@ import java.lang.annotation.RetentionPolicy;
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
+@Parameter(hidden = true)
 public @interface CurrentUser {
 }
