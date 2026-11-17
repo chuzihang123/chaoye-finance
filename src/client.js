@@ -5,23 +5,23 @@ import { resolveRef, validateSchema } from './validation.js';
 
 const methods = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options']);
 
-export class JinbooksClient {
+export class ChaoyeFinanceClient {
   constructor(env = process.env) {
-    this.base = new URL(env.JINBOOKS_BASE_URL || 'http://127.0.0.1:2154/jinbooks-api');
+    this.base = new URL(env.CHAOYE_FINANCE_BASE_URL || 'http://127.0.0.1:2154/chaoye-api');
     if (!['http:', 'https:'].includes(this.base.protocol) || this.base.search || this.base.hash || this.base.username) {
-      throw new Error('JINBOOKS_BASE_URL 必须是无查询参数和凭据的 HTTP(S) 地址');
+      throw new Error('CHAOYE_FINANCE_BASE_URL 必须是无查询参数和凭据的 HTTP(S) 地址');
     }
     this.base.pathname = this.base.pathname.replace(/\/$/, '');
-    this.token = env.JINBOOKS_TOKEN || '';
-    this.refreshToken = env.JINBOOKS_REFRESH_TOKEN || '';
-    this.username = env.JINBOOKS_USERNAME;
-    this.password = env.JINBOOKS_PASSWORD;
-    this.downloadDir = path.resolve(env.JINBOOKS_DOWNLOAD_DIR || './downloads');
+    this.token = env.CHAOYE_FINANCE_TOKEN || '';
+    this.refreshToken = env.CHAOYE_FINANCE_REFRESH_TOKEN || '';
+    this.username = env.CHAOYE_FINANCE_USERNAME;
+    this.password = env.CHAOYE_FINANCE_PASSWORD;
+    this.downloadDir = path.resolve(env.CHAOYE_FINANCE_DOWNLOAD_DIR || './downloads');
     this.cookies = new Map();
     this.secrets = new Set([this.token, this.refreshToken, this.password].filter(Boolean));
-    this.uploadRoots = env.JINBOOKS_UPLOAD_ROOTS ? JSON.parse(env.JINBOOKS_UPLOAD_ROOTS) : [process.cwd()];
-    if (!Array.isArray(this.uploadRoots) || !this.uploadRoots.length || this.uploadRoots.some(root => typeof root !== 'string' || !path.isAbsolute(root))) throw new Error('JINBOOKS_UPLOAD_ROOTS 必须是绝对目录的 JSON 数组');
-    this.maxUploadBytes = Number(env.JINBOOKS_MAX_UPLOAD_BYTES || 20 * 1024 * 1024);
+    this.uploadRoots = env.CHAOYE_FINANCE_UPLOAD_ROOTS ? JSON.parse(env.CHAOYE_FINANCE_UPLOAD_ROOTS) : [process.cwd()];
+    if (!Array.isArray(this.uploadRoots) || !this.uploadRoots.length || this.uploadRoots.some(root => typeof root !== 'string' || !path.isAbsolute(root))) throw new Error('CHAOYE_FINANCE_UPLOAD_ROOTS 必须是绝对目录的 JSON 数组');
+    this.maxUploadBytes = Number(env.CHAOYE_FINANCE_MAX_UPLOAD_BYTES || 20 * 1024 * 1024);
     if (!Number.isSafeInteger(this.maxUploadBytes) || this.maxUploadBytes < 1) throw new Error('无效上传大小上限');
     this.confirmations = new Map();
     this.sessionVersion = 0;
@@ -95,12 +95,12 @@ export class JinbooksClient {
   }
 
   async login({ state, captcha = '' } = {}) {
-    if (!this.username || !this.password) throw new Error('请在 MCP 环境配置 JINBOOKS_USERNAME 和 JINBOOKS_PASSWORD，或配置 JINBOOKS_TOKEN');
+    if (!this.username || !this.password) throw new Error('请在 MCP 环境配置 CHAOYE_FINANCE_USERNAME 和 CHAOYE_FINANCE_PASSWORD，或配置 CHAOYE_FINANCE_TOKEN');
     if (!state) {
       const config = await this.request('/login/get', { auth: false, query: { _allow_anonymous: true } });
       const mode = String(config.data.captcha).toUpperCase();
       if (!['FALSE', 'OFF', 'NONE', 'NO', '0', ''].includes(mode)) {
-        throw new Error('当前登录需要验证码。先调用 jinbooks_login_challenge，再携带返回的 state 和用户提供的验证码调用 jinbooks_login');
+        throw new Error('当前登录需要验证码。先调用 chaoye_finance_login_challenge，再携带返回的 state 和用户提供的验证码调用 chaoye_finance_login');
       }
       state = config.data.state;
     }
@@ -167,7 +167,7 @@ export class JinbooksClient {
     if (!roots.some(root => {
       const relative = path.relative(root, resolved);
       return relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative);
-    })) throw new Error('上传文件超出 JINBOOKS_UPLOAD_ROOTS 允许目录');
+    })) throw new Error('上传文件超出 CHAOYE_FINANCE_UPLOAD_ROOTS 允许目录');
     let handle;
     try {
       handle = await open(resolved, 'r');
@@ -193,7 +193,7 @@ export class JinbooksClient {
     const item = await this.operation(operationId);
     if (/^\/(login|auth|logout)(\/|$)/.test(item.path)) throw new Error('认证请使用专用登录工具');
     if (!this.token && this.username && this.password) await this.login();
-    if (!this.token) throw new Error('请先调用 jinbooks_login 或配置 JINBOOKS_TOKEN');
+    if (!this.token) throw new Error('请先调用 chaoye_finance_login 或配置 CHAOYE_FINANCE_TOKEN');
     let route = item.path.replace(/\{([^}]+)\}/g, (_, key) => {
       if (pathParams[key] === undefined) throw new Error(`缺少路径参数 ${key}`);
       const value = String(pathParams[key]);
@@ -296,9 +296,9 @@ export class JinbooksClient {
     const prepared = await this.prepare(args);
     if (prepared.requiresConfirmation || args.confirmationId) {
       const entry = this.confirmations.get(args.confirmationId);
-      if (!entry || entry.expiresAt <= Date.now()) throw new Error('该操作需要有效确认凭据。破坏性操作请先使用 jinbooks_preview_operation 获取预览并获得用户确认。');
+      if (!entry || entry.expiresAt <= Date.now()) throw new Error('该操作需要有效确认凭据。破坏性操作请先使用 chaoye_finance_preview_operation 获取预览并获得用户确认。');
       const context = await this.context();
-      if (entry.expiresAt <= Date.now()) throw new Error('确认凭据已过期，请先使用 jinbooks_preview_operation 重新预览并获得用户确认。');
+      if (entry.expiresAt <= Date.now()) throw new Error('确认凭据已过期，请先使用 chaoye_finance_preview_operation 重新预览并获得用户确认。');
       if (entry.fingerprint !== this.fingerprint(prepared, context)) throw new Error('操作参数、文件或当前用户账套已变化，请重新预览并确认');
       // Consume before dispatch so simultaneous calls cannot reuse a confirmation.
       if (!this.confirmations.delete(args.confirmationId)) throw new Error('确认凭据已使用');

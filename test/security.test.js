@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { JinbooksClient } from '../src/client.js';
+import { ChaoyeFinanceClient } from '../src/client.js';
 
 function fixture() {
-  const client = new JinbooksClient({ JINBOOKS_TOKEN: 'original-token', JINBOOKS_REFRESH_TOKEN: 'original-refresh', JINBOOKS_PASSWORD: 'test-password' });
+  const client = new ChaoyeFinanceClient({ CHAOYE_FINANCE_TOKEN: 'original-token', CHAOYE_FINANCE_REFRESH_TOKEN: 'original-refresh', CHAOYE_FINANCE_PASSWORD: 'test-password' });
   client.spec = {
     openapi: '3.0.1',
     paths: {
@@ -56,16 +56,16 @@ test('拒绝错误查询参数、未声明字段及错误路径类型', async ()
 test('危险操作必须预览，凭据绑定参数、有效期、账套且单次使用', async () => {
   const { client, calls } = fixture();
   const args = { operationId: 'DELETE /delete/{id}', pathParams: { id: 'v1' } };
-  await assert.rejects(client.execute(args), /请先使用 jinbooks_preview_operation/);
+  await assert.rejects(client.execute(args), /请先使用 chaoye_finance_preview_operation/);
   const preview = await client.preview(args);
   assert.equal(preview.context.bookId, 'b1');
   assert.equal(calls.filter(call => call.route.startsWith('/delete')).length, 0);
   await assert.rejects(client.execute({ ...args, pathParams: { id: 'v2' }, confirmationId: preview.confirmationId }), /已变化/);
   await client.execute({ ...args, confirmationId: preview.confirmationId });
-  await assert.rejects(client.execute({ ...args, confirmationId: preview.confirmationId }), /请先使用 jinbooks_preview_operation/);
+  await assert.rejects(client.execute({ ...args, confirmationId: preview.confirmationId }), /请先使用 chaoye_finance_preview_operation/);
   const expired = await client.preview(args);
   client.confirmations.get(expired.confirmationId).expiresAt = 0;
-  await assert.rejects(client.execute({ ...args, confirmationId: expired.confirmationId }), /请先使用 jinbooks_preview_operation/);
+  await assert.rejects(client.execute({ ...args, confirmationId: expired.confirmationId }), /请先使用 chaoye_finance_preview_operation/);
   const changed = await client.preview(args);
   client.request = async () => ({ data: { id: 'u1', bookId: 'b2' } });
   await assert.rejects(client.execute({ ...args, confirmationId: changed.confirmationId }), /已变化/);
@@ -118,7 +118,7 @@ test('重启后首次业务操作可使用配置账号重新登录', async () =>
 
 test('后端 OpenAPI 包含上下文前缀时仅发送一次前缀', async () => {
   const { client, calls } = fixture();
-  client.spec.paths['/jinbooks-api/fetch'] = client.spec.paths['/fetch'];
+  client.spec.paths['/chaoye-api/fetch'] = client.spec.paths['/fetch'];
   delete client.spec.paths['/fetch'];
   const operation = await client.operation('GET /fetch');
   assert.equal(operation.path, '/fetch');
@@ -127,8 +127,8 @@ test('后端 OpenAPI 包含上下文前缀时仅发送一次前缀', async () =>
 });
 
 test('上传拒绝相对路径、越界、缺失、目录、过大文件及目录链接逃逸', async t => {
-  const root = await mkdtemp(path.join(tmpdir(), 'jinbooks-upload-test-'));
-  const outside = await mkdtemp(path.join(tmpdir(), 'jinbooks-outside-test-'));
+  const root = await mkdtemp(path.join(tmpdir(), 'chaoye_finance-upload-test-'));
+  const outside = await mkdtemp(path.join(tmpdir(), 'chaoye_finance-outside-test-'));
   t.after(async () => { await rm(root, { recursive: true }); await rm(outside, { recursive: true }); });
   await writeFile(path.join(root, 'small.txt'), 'ok');
   await writeFile(path.join(root, 'large.txt'), 'oversize');

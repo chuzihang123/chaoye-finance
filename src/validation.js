@@ -32,7 +32,7 @@ export function validateSchema(schema, value, spec, label) {
   const ajv = new Ajv({ strict: false, allErrors: true, coerceTypes: false, validateFormats: true });
   addFormats(ajv);
   // Register the document so nested and recursive local schema references resolve.
-  const rootId = 'urn:jinbooks:openapi';
+  const rootId = 'urn:chaoye-finance:openapi';
   ajv.addSchema(normalize({ ...spec, $id: rootId }), rootId);
   const rewrite = node => {
     if (Array.isArray(node)) return node.map(rewrite);

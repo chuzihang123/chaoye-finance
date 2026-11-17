@@ -4,13 +4,13 @@ import { pathToFileURL } from 'node:url';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import { createJinbooksServer } from './server.js';
+import { createChaoyeFinanceServer } from './server.js';
 
 export function createHttpServer(env = process.env) {
-  const token = env.JINBOOKS_MCP_TOKEN;
-  if (!token || token.length < 32) throw new Error('JINBOOKS_MCP_TOKEN 至少需要 32 个字符');
+  const token = env.CHAOYE_FINANCE_MCP_TOKEN;
+  if (!token || token.length < 32) throw new Error('CHAOYE_FINANCE_MCP_TOKEN 至少需要 32 个字符');
   const expectedHash = createHash('sha256').update(`Bearer ${token}`).digest();
-  const allowedOrigins = new Set(JSON.parse(env.JINBOOKS_MCP_ORIGINS || '[]'));
+  const allowedOrigins = new Set(JSON.parse(env.CHAOYE_FINANCE_MCP_ORIGINS || '[]'));
   const sessions = new Map();
   const reply = (res, status, message) => {
     res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -46,7 +46,7 @@ export function createHttpServer(env = process.env) {
       if (!session) {
         if (req.method !== 'POST' || !isInitializeRequest(body)) return reply(res, 400, 'Initialization required');
         if (sessions.size >= 32) return reply(res, 503, 'Session limit reached');
-        const server = createJinbooksServer(env);
+        const server = createChaoyeFinanceServer(env);
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           onsessioninitialized: id => sessions.set(id, session),
@@ -86,7 +86,7 @@ export function createHttpServer(env = process.env) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const app = createHttpServer();
-  const port = Number(process.env.JINBOOKS_MCP_PORT || 3155);
-  app.server.listen(port, process.env.JINBOOKS_MCP_HOST || '127.0.0.1', () => console.error(`JinBooks MCP HTTP listening on port ${port}`));
+  const port = Number(process.env.CHAOYE_FINANCE_MCP_PORT || 3155);
+  app.server.listen(port, process.env.CHAOYE_FINANCE_MCP_HOST || '127.0.0.1', () => console.error(`朝烨财务 MCP HTTP listening on port ${port}`));
   for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => { void app.close(); });
 }

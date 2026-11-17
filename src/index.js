@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { createJinbooksServer } from './server.js';
+import { createChaoyeFinanceServer } from './server.js';
 
-await createJinbooksServer().connect(new StdioServerTransport());
+await createChaoyeFinanceServer().connect(new StdioServerTransport());
