@@ -20,9 +20,9 @@ test('HTTP MCP 鉴权、Origin 检查、会话隔离及真实 SDK 调用', async
   await new Promise(resolve => backend.listen(0, '127.0.0.1', resolve));
   const token = 'test-http-token-at-least-32-characters';
   const app = createHttpServer({
-    JINBOOKS_MCP_TOKEN: token,
-    JINBOOKS_BASE_URL: `http://127.0.0.1:${backend.address().port}/jinbooks-api`,
-    JINBOOKS_USERNAME: 'test', JINBOOKS_PASSWORD: 'test-password'
+    CHAOYE_FINANCE_MCP_TOKEN: token,
+    CHAOYE_FINANCE_BASE_URL: `http://127.0.0.1:${backend.address().port}/chaoye-api`,
+    CHAOYE_FINANCE_USERNAME: 'test', CHAOYE_FINANCE_PASSWORD: 'test-password'
   });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   const url = new URL(`http://127.0.0.1:${app.server.address().port}/mcp`);
@@ -42,10 +42,10 @@ test('HTTP MCP 鉴权、Origin 检查、会话隔离及真实 SDK 调用', async
     clients.push({ client, transport });
     assert.equal((await client.listTools()).tools.length, 7);
   }
-  const login = await clients[0].client.callTool({ name: 'jinbooks_login', arguments: {} });
+  const login = await clients[0].client.callTool({ name: 'chaoye_finance_login', arguments: {} });
   assert.equal(JSON.parse(login.content[0].text).authenticated, true);
-  const first = await clients[0].client.callTool({ name: 'jinbooks_status', arguments: {} });
-  const second = await clients[1].client.callTool({ name: 'jinbooks_status', arguments: {} });
+  const first = await clients[0].client.callTool({ name: 'chaoye_finance_status', arguments: {} });
+  const second = await clients[1].client.callTool({ name: 'chaoye_finance_status', arguments: {} });
   assert.equal(JSON.parse(first.content[0].text).authenticated, true);
   assert.equal(JSON.parse(second.content[0].text).authenticated, false);
 });

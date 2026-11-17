@@ -259,7 +259,7 @@ import {
   updateSubject,
   reorgDisplayName
 } from "@/api/system/book/book-subject";
-import {handleTree} from "@/utils/Jinbooks";
+import {handleTree} from "@/utils/Finance";
 import bookStore from "@/store/modules/bookStore";
 import Template from "@/views/hr/salary-voucher-rules/template.vue";
 

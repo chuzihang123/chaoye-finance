@@ -94,7 +94,7 @@
 <script setup lang="ts">
 import {ref, getCurrentInstance, reactive, watch} from "vue";
 import {getCodeImg, loginPreGet, getThirdById} from "@/api/login";
-import {privateImage} from "@/utils/Jinbooks";
+import {privateImage} from "@/utils/Finance";
 import {ElMessage} from 'element-plus'
 import Cookies from "js-cookie";
 import {decrypt} from "@/utils/Jsencrypt";

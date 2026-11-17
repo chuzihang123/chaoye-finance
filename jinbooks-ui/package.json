@@ -1,8 +1,8 @@
 {
-  "name": "jinbooks",
+  "name": "chaoye-finance",
   "version": "v1.1.0",
-  "description": "jinbooks",
-  "author": "jinbooks",
+  "description": "朝烨财务",
+  "author": "朝烨财务",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
@@ -21,7 +21,7 @@
     "element-plus": "2.11.3",
     "file-saver": "^2.0.5",
     "fuse.js": "6.6.2",
-    "jinbooks": "file:",
+    "chaoye-finance": "file:",
     "js-cookie": "3.0.5",
     "jsencrypt": "3.3.2",
     "lucide-vue-next": "^0.475.0",

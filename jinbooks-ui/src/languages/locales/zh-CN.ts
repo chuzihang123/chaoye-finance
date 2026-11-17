@@ -1,7 +1,7 @@
 export default {
-  "appTitle": "JinBooks财务记账系统",
+  "appTitle": "朝烨财务",
   "login": {
-    "title": "JinBooks",
+    "title": "朝烨财务",
     "titleSub": "开源财务记账产品",
     "tabCredentials": "账号登录",
     "tabMobile": "手机登录",

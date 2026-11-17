@@ -1,4 +1,4 @@
-# JinBooks Docker Compose 一键部署指南
+# 朝烨财务 Docker Compose 一键部署指南
 
 ## 快速开始
 
@@ -16,8 +16,8 @@ docker compose ps
 
 # 4. 访问系统
 # 前端: http://localhost
-# 后端 API: http://localhost:2154/jinbooks-api
-# Swagger 文档: http://localhost/jinbooks-api/swagger-ui.html
+# 后端 API: http://localhost:2154/chaoye-api
+# Swagger 文档: http://localhost/chaoye-api/swagger-ui.html
 ```
 
 ## 服务架构
@@ -160,7 +160,7 @@ MYSQL_PORT=3307
 
 - **后端构建**：使用 Gradle 8.14.5 + JDK 21 多阶段构建，最终镜像基于 Eclipse Temurin JRE 21
 - **前端构建**：使用 Node 20 多阶段构建，最终镜像基于 Nginx Alpine
-- **Nginx 代理**：前端 `/jinbooks-api/` 请求通过 Nginx 反向代理到后端服务
+- **Nginx 代理**：前端 `/chaoye-api/` 请求通过 Nginx 反向代理到后端服务
 - **健康检查**：MySQL、Redis 和后端均配置了健康检查，确保服务按正确顺序启动
 - **日志持久化**：后端日志通过 Volume 映射到宿主机 `logs/backend/` 目录，每天滚动、最多保留 15 个文件
 

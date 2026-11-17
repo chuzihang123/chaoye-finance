@@ -198,7 +198,7 @@ public class EmployeeSalaryServiceImpl extends ServiceImpl<EmployeeSalaryMapper,
             //创建sheet
             Sheet sheet = workbook.createSheet(dto.getBelongDate() + "_正常工资薪金所得");
             Row row = sheet.createRow(rowCount++);
-            row.createCell(0).setCellValue("JinBooks Salary Export " + DateUtils.getCurrentDateTimeAsString());
+            row.createCell(0).setCellValue("朝烨财务 工资导出 " + DateUtils.getCurrentDateTimeAsString());
             sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 30));
             // 2. 创建数据格式（保留两位小数）
             CellStyle cellStyle = workbook.createCellStyle();

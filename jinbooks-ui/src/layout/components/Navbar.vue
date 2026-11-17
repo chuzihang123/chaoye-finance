@@ -110,7 +110,7 @@ import bookStore from '@/store/modules/bookStore'
 import {logoutApi} from "@/api/login";
 import Logo from "./Sidebar/Logo.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
-import {parseTime} from "@/utils/Jinbooks"
+import {parseTime} from "@/utils/Finance"
 
 const appStore = useAppStore()
 const userStore = useUserStore()

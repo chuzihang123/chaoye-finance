@@ -169,7 +169,7 @@
 </template>
 
 <script setup name="ReportBalanceSheet" lang="ts">
-import {getCurrentQuarter, parseTime} from '@/utils/Jinbooks'
+import {getCurrentQuarter, parseTime} from '@/utils/Finance'
 import {getCurrentInstance, h, ref, shallowRef, reactive, toRefs} from 'vue'
 import bookStore from "@/store/modules/bookStore";
 import {ElForm, FormInstance} from "element-plus";

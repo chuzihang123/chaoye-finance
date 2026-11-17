@@ -157,7 +157,7 @@ import {listStandardsAll} from "@/api/system/standard/standard";
 import editForm from "./standard-subject/edit.vue"
 import modal from "@/plugins/modal";
 import {deleteBatch} from "@/api/system/standard/standard-subject";
-import {handleTree, handleTreeToList} from "@/utils/Jinbooks";
+import {handleTree, handleTreeToList} from "@/utils/Finance";
 
 const {t} = useI18n()
 const {proxy} = getCurrentInstance()!;

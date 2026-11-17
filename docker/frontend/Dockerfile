@@ -25,9 +25,9 @@ COPY . .
 
 # 覆盖生产环境变量，适配 Docker 根路径部署
 # VITE_APP_CONTEXT_PATH 设为 /，使前端适配 Nginx 根路径部署
-RUN echo "VITE_APP_TITLE='JinBooks财务记账系统'" > .env.production && \
+RUN echo "VITE_APP_TITLE='朝烨财务'" > .env.production && \
     echo "VITE_APP_ENV='production'" >> .env.production && \
-    echo "VITE_APP_BASE_API='/jinbooks-api'" >> .env.production && \
+    echo "VITE_APP_BASE_API='/chaoye-api'" >> .env.production && \
     echo "VITE_APP_CONTEXT_PATH='/'" >> .env.production && \
     echo "VITE_BUILD_COMPRESS='gzip'" >> .env.production
 

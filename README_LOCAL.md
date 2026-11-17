@@ -1,4 +1,4 @@
-# JinBooks Windows 本地一键启动
+# 朝烨财务 Windows 本地一键启动
 
 > 面向社区版用户 — 无需 Docker、无需手动安装 MySQL/Redis/JRE/Nginx, 双击 bat 即可启动整套系统
 
@@ -76,11 +76,11 @@ jinbooks-sq\
 |------|------|------|
 | MySQL | **33306** | root / `JinbooksRoot321!` |
 | Redis | **36379** | 密码 `JinbooksRedis321!` |
-| 后端 Spring Boot | **32315** | 直接访问 `http://127.0.0.1:32315/jinbooks-api` |
+| 后端 Spring Boot | **32315** | 直接访问 `http://127.0.0.1:32315/chaoye-api` |
 | Nginx | **32080** | 前端访问入口, 同时反向代理后端 API |
 
 - 前端入口: `http://127.0.0.1:32080`
-- 后端 API 直连: `http://127.0.0.1:32315/jinbooks-api`
+- 后端 API 直连: `http://127.0.0.1:32315/chaoye-api`
 
 > 后端 url 由 `-Dspring.datasource.url=...` 命令行参数覆盖 jar 内的 application 配置, 改 `.env` 即可。
 

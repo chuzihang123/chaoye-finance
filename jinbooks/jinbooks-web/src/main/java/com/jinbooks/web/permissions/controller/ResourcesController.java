@@ -173,7 +173,7 @@ public class ResourcesController {
 				}
 			}
 
-			TreeNode rootNode = new TreeNode("1","JinBooks");
+			TreeNode rootNode = new TreeNode("1","朝烨财务");
 			rootNode.setParentKey("1");
 			rootNode.setExpanded(true);
 			rootNode.setLeaf(false);
